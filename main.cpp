@@ -6,7 +6,6 @@
 #include <iostream>
 
 #include "src/metacheck.hpp"
-#include "src/generators.hpp"
 
 template <bool do_fail>
 struct foo_impl {
@@ -22,7 +21,7 @@ struct foo_impl<true> {
 };
 /// function that fails to work for the number 0
 template <typename test>
-using foo = typename foo_impl<(test::value == 0)>::template f<test>;
+using foo = typename foo_impl<(test{} == 0)>::template f<test>;
 
 // the actual test case
 template <typename test>
@@ -33,7 +32,7 @@ int main() {
 	        mc::section("main",
 	                mc::test<foo_test, // the function to test, should return a bool
 	                         100, // the number of times to repeat the test
-	                         mc::gen::uint_<100>>, // parameter to use in the test
-	                mc::test<foo_test, 100, mc::gen::uint_<100>>));
+	                         mc::gen::uint_<100>>{}, // parameter to use in the test
+	                mc::test<foo_test, 100, mc::gen::uint_<100>>{}));
 	return 0;
 }

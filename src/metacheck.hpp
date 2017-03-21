@@ -6,11 +6,11 @@
 
 #include <utility>
 #include <tuple>
-#include <sstream>
 #include <string>
 
 #include "utility.hpp"
 #include "random.hpp"
+#include "generators.hpp"
 #include "mpl.hpp"
 
 namespace mc {
@@ -27,36 +27,20 @@ namespace mc {
 		template <template <typename...> class Func, typename seed, typename Result>
 		struct call_generated_result {
 			/// the result of the function being called with the generated parameters
-			using result = call<Func, Result>;
+			using result = call<Func, typename Result::type>;
 			/// the next seed that should be used when it is wanted to generate more numbers
 			using next_seed = seed;
 			/// the parameters that were used in the function call; can be any list type
 			using parameters = Result;
 		};
 
-		template <std::size_t params_left>
-		struct call_generated_impl {
-			// case for one or more parameters remaining
-			template <template <typename...> class Func, typename seed, typename Result,
-			          typename Param, typename... Params>
-			using f = typename call_generated_impl<sizeof...(Params)>::template f<
-			        Func, typename seed::next,
-			        mpl::push_front<typename Param::template generate<seed::result>, Result>,
-			        Params...>;
-		};
-
-		template <>
-		struct call_generated_impl<0> {
-			// case for all parameters being processed
-			template <template <typename...> class Func, typename seed, typename Result,
-			          typename... Params>
-			using f = call_generated_result<Func, seed, Result>;
-		};
+		template <template <typename...> class Func, typename Result>
+		using call_generated_impl =
+		        call_generated_result<Func, typename Result::next_seed, typename Result::type>;
 
 		template <template <typename...> class Func, typename seed, typename... Params>
 		using call_generated =
-		        typename call_generated_impl<sizeof...(Params)>::template f<Func, seed, mpl::list<>,
-		                                                                    Params...>;
+		        call_generated_impl<Func, typename gen::list<Params...>::template generate<seed>>;
 
 		template <template <typename...> class FuncName, unsigned failnum, unsigned tries,
 		          typename seed, typename... Params>
@@ -77,21 +61,19 @@ namespace mc {
 				stream << "[ RUN      ] " << suite << name << std::endl
 				       << "Failure after " << (tries - failnum) << "/" << tries << " tries."
 				       << std::endl
-				       << "\tSeed: " << random_seed::state << std::endl
 				       << "\tParameters:" << std::endl;
 				print_all(stream, "\t\t", std::string(type_name<Params>{})...) << std::endl;
 				stream << "[  FAILED  ] " << suite << name << " (0 ms)" << std::endl;
 				return stream;
 			}
 		};
-		template <template <typename...> class FuncName, unsigned failnum, unsigned tries,
-		          typename Result>
+		template <unsigned failnum, unsigned tries, typename Result>
 		struct make_error;
-		template <template <typename...> class FuncName, unsigned failnum, unsigned tries,
+		template <unsigned failnum, unsigned tries, template <typename...> class FuncName,
 		          typename seed, typename... Params>
-		struct make_error<FuncName, failnum, tries,
-		                  call_generated_result<FuncName, seed, mpl::list<Params...>>> {
-			using f = error<FuncName, failnum, tries, seed, Params...>;
+		struct make_error<failnum, tries,
+		                  call_generated_result<FuncName, seed, gen::value::list<Params...>>> {
+			using f = error<FuncName, failnum, tries, seed, typename Params::type...>;
 		};
 
 		template <template <typename...> class FuncName, unsigned tries, typename seed>
@@ -133,7 +115,7 @@ namespace mc {
 		struct check_impl<FAIL> {
 			template <template <typename...> class Func, unsigned tries, unsigned total_tries,
 			          typename Result, typename... Params>
-			using f = typename make_error<Func, tries, total_tries, Result>::f;
+			using f = typename make_error<tries, total_tries, Result>::f;
 		};
 		template <>
 		struct check_impl<RECURSE> {
@@ -152,7 +134,7 @@ namespace mc {
 	using check = typename detail::check_impl<detail::check_select(tries)>::template f<
 	        Func, tries + 1, tries,
 	        detail::call_generated_result<mpl::always<mpl::bool_<true>>::template f, seed,
-	                                      mpl::list<>>,
+	                                      gen::value::list<>>,
 	        Params...>;
 
 	namespace detail {
@@ -174,7 +156,7 @@ namespace mc {
 	/// \tparam Params the parameter generators that create the parameters to be passed into the
 	///             function
 	template <template <typename...> class Func, unsigned tries, typename... Params>
-	constexpr detail::test<Func, tries, Params...> test = {};
+	using test = detail::test<Func, tries, Params...>;
 
 	template <typename... Tests>
 	constexpr detail::section<Tests...> section(const char *name, const Tests... tests) {
@@ -245,10 +227,11 @@ namespace mc {
 		}
 
 		template <typename State, typename TestResult>
-		constexpr auto push_test_result(const State state, TestResult result) -> section_temp<
-		        decltype(std::tuple_cat(state.results, std::make_tuple(result))),
-		        typename TestResult::next_seed, State::num_passed + (TestResult::passed ? 1 : 0),
-		        State::num_failed + (TestResult::passed ? 0 : 1)> {
+		constexpr auto push_test_result(const State state, TestResult result)
+		        -> section_temp<decltype(std::tuple_cat(state.results, std::make_tuple(result))),
+		                        typename TestResult::next_seed,
+		                        State::num_passed + (TestResult::passed ? 1 : 0),
+		                        State::num_failed + (TestResult::passed ? 0 : 1)> {
 			return {std::tuple_cat(state.results, std::make_tuple(result)), state.name};
 		}
 
@@ -267,16 +250,15 @@ namespace mc {
 		}
 
 		template <typename State, typename SectionResult>
-		constexpr auto push_section_result(const State state, const SectionResult result)
-		        -> section_temp<decltype(std::tuple_cat(
-		                                state.results,
+		constexpr auto
+		push_section_result(const State state, const SectionResult result) -> section_temp<
+		        decltype(std::tuple_cat(state.results,
 		                                std::make_tuple(result.make_result_struct()))),
-		                        typename SectionResult::next_seed,
-		                        State::num_passed + SectionResult::num_passed,
-		                        State::num_failed + SectionResult::num_failed> {
-			return {std::tuple_cat(state.results,
-			                       std::make_tuple(result.make_result_struct())),
-			        state.name};
+		        typename SectionResult::next_seed, State::num_passed + SectionResult::num_passed,
+		        State::num_failed + SectionResult::num_failed> {
+			return {.results = std::tuple_cat(state.results,
+			                                  std::make_tuple(result.make_result_struct())),
+			        .name = state.name};
 		}
 
 		template <typename State, typename... Tests, std::size_t... Ints>
@@ -322,7 +304,8 @@ namespace mc {
 
 				stream << "[==========] Running " << num_tests
 				       << (num_tests == 1 ? " test" : " tests") << " from " << num_suites
-				       << " test " << (num_suites == 1 ? "case." : "cases.") << std::endl;
+				       << " test " << (num_suites == 1 ? "case." : "cases.") << std::endl
+				       << "Seed: " << random_seed::state << std::endl;
 				print_all_tuple(std::forward<Ostream>(stream), std::string(""), lhs.result.results);
 				stream << std::endl
 				       << "[----------] Global test environment tear-down" << std::endl

@@ -3,7 +3,7 @@ project(metacheck)
 
 set(CMAKE_CXX_STANDARD 14)
 
-# always rebuild anything that uses the metacheck header
+# always rebuild anything that uses the random header
 add_custom_command(OUTPUT src/random.hpp
 		COMMAND touch src/random.hpp
 		WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})

@@ -5,7 +5,6 @@
 #pragma once
 
 namespace mc {
-	using seed_t = uint64_t;
 
 	template <uint64_t cur_state>
 	struct seed_state {
@@ -19,7 +18,9 @@ namespace mc {
 		using next = seed_state<(state ^ (state >> 12)) ^ ((state ^ (state >> 12)) << 25) ^
 		                        ((state ^ (state >> 12)) ^ ((state ^ (state >> 12)) << 25) >> 27)>;
 
-		constexpr static seed_t result{state * uint64_t(0x2545F4914F6CDD1D)};
+		constexpr operator uint64_t() const {
+			return state * uint64_t(0x2545F4914F6CDD1D);
+		}
 	};
 
 	// TODO optionally use a "RANDOM" define
@@ -28,5 +29,5 @@ namespace mc {
 	        seed_state<seed_state<(((((__TIME__[1] - '0') + (__TIME__[0] - '0') * 10) * 60) +
 	                                ((__TIME__[4] - '0') + (__TIME__[3] - '0') * 10)) *
 	                               60) +
-	                              ((__TIME__[7] - '0') + (__TIME__[6] - '0') * 10)>::result>;
+	                              ((__TIME__[7] - '0') + (__TIME__[6] - '0') * 10)>{}>;
 }
