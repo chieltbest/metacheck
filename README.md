@@ -4,7 +4,10 @@ Metacheck is a parameterized testing suite for template metaprograms, and aims t
 functionality as rapidcheck or quickcheck.
 
 The output of metacheck is currently based on google test, with planned support for JUnit XML 
-test reports. 
+test reports.
+
+See the main.cpp file for example usage of metacheck.
+
 ## Todo
 - improve this readme
 - create more generators
