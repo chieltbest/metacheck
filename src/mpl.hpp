@@ -77,32 +77,31 @@ namespace mc {
 		template <unsigned N, typename... Ts>
 		using at = typename at_impl<N, Ts...>::f;
 
-		template <template <typename, typename> class Func, typename State, typename... Ts>
+		template <template <typename...> class Func, typename State, typename... Ts>
 		struct fold_right_impl {
 			using f = State;
 		};
-		template <template <typename, typename> class Func, typename State, typename T,
-		          typename... Ts>
+		template <template <typename...> class Func, typename State, typename T, typename... Ts>
 		struct fold_right_impl<Func, State, T, Ts...> {
 			using f = Func<typename fold_right_impl<Func, State, Ts...>::f, T>;
 		};
 
-		template <template <typename, typename> class Func, typename... Ts>
+		template <template <typename...> class Func, typename... Ts>
 		using fold_right = typename fold_right_impl<Func, Ts...>::f;
 
-		template <template <typename> class Func, typename L>
+		template <template <typename...> class Func, typename L>
 		struct transform_impl;
-		template <template <typename> class Func, template <typename...> class L, typename... Ts>
+		template <template <typename...> class Func, template <typename...> class L, typename... Ts>
 		struct transform_impl<Func, L<Ts...>> {
 			using f = L<Func<Ts>...>;
 		};
 
-		template <template <typename> class Func, typename L>
+		template <template <typename...> class Func, typename L>
 		using transform = typename transform_impl<Func, L>::f;
 
-		template <template <typename, typename> class Func, typename L1, typename L2>
+		template <template <typename...> class Func, typename L1, typename L2>
 		struct zip_with_impl;
-		template <template <typename, typename> class Func, template <typename...> class L1,
+		template <template <typename...> class Func, template <typename...> class L1,
 		          typename... L1s, template <typename...> class L2, typename... L2s>
 		struct zip_with_impl<Func, L1<L1s...>, L2<L2s...>> {
 			using f = L1<Func<L1s, L2s>...>;
@@ -112,7 +111,9 @@ namespace mc {
 		using zip_with = typename zip_with_impl<Func, L1, L2>::f;
 
 		template <typename Ls>
-		struct join_impl;
+		struct join_impl {
+			using f = Ls;
+		};
 		template <template <typename...> class L, typename Ls>
 		struct join_impl<L<Ls>> {
 			using f = Ls;
@@ -120,22 +121,27 @@ namespace mc {
 		template <template <typename...> class L, template <typename...> class L1, typename... L1s,
 		          template <typename...> class L2, typename... L2s, typename... Ls>
 		struct join_impl<L<L1<L1s...>, L2<L2s...>, Ls...>> {
-			using f = typename join_impl<L<L1<L1s..., L2s...>, Ls...>>::f;
+			using f = typename join_impl<L<L<L1s..., L2s...>, Ls...>>::f;
 		};
 
 		template <typename L>
 		using join = typename join_impl<L>::f;
 
 		template <typename Seq>
-		struct uint_sequence_for_impl;
+		struct uint_sequence_impl;
 		template <typename T, T... Is>
-		struct uint_sequence_for_impl<std::integer_sequence<T, Is...>> {
+		struct uint_sequence_impl<std::integer_sequence<T, Is...>> {
 			using f = list<uint_<Is>...>;
 		};
 
 		template <typename... Ts>
-		using uint_sequence_for =
-		        typename uint_sequence_for_impl<std::index_sequence_for<Ts...>>::f;
+		using uint_sequence_for = typename uint_sequence_impl<std::index_sequence_for<Ts...>>::f;
+
+		template <unsigned N>
+		using uint_sequence = typename uint_sequence_impl<std::make_index_sequence<N>>::f;
+
+		template <unsigned N, typename T>
+		using repeat = transform<always<T>::template f, uint_sequence<N>>;
 
 		enum find_if_state { FOUND, NOT_FOUND, RECURSE };
 		constexpr find_if_state find_if_selector(bool found, int left) {
@@ -146,8 +152,8 @@ namespace mc {
 		template <>
 		struct find_if_impl<FOUND> {
 			// element was found, call the found function with it
-			template <template <typename> class Pred, typename Found,
-			          typename NotFound, typename Prev, typename... Ts>
+			template <template <typename> class Pred, typename Found, typename NotFound,
+			          typename Prev, typename... Ts>
 			using f = typename Found::template f<Prev>;
 		};
 		template <>
@@ -178,5 +184,33 @@ namespace mc {
 		/// when the element is not found
 		template <typename L, template <typename> class Pred, typename Found, typename NotFound>
 		using find_if = typename find_if_unpack<L, Pred, Found, NotFound>::f;
+
+		template <unsigned N>
+		struct drop_impl {
+			template <typename T, typename... Ts>
+			using f = typename drop_impl<N - 1>::template f<Ts...>;
+		};
+		template <>
+		struct drop_impl<0> {
+			template <typename... Ts>
+			using f = mpl::list<Ts...>;
+		};
+
+		template <unsigned N, typename... Ts>
+		using drop = typename drop_impl<N>::template f<Ts...>;
+
+		template <unsigned N>
+		struct take_impl {
+			template <typename Result, typename T, typename... Ts>
+			using f = push_front<T, typename take_impl<N - 1>::template f<Ts...>>;
+		};
+		template <>
+		struct take_impl<0> {
+			template <typename Result, typename... Ts>
+			using f = Result;
+		};
+
+		template <unsigned N, typename... Ts>
+		using take = typename take_impl<N>::template f<mpl::list<>, Ts...>;
 	}
 }

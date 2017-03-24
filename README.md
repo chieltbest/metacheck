@@ -19,6 +19,5 @@ See the main.cpp file for example usage of metacheck.
 ## Todo
 - improve this readme
 - create more generators
-- implement minification
 - support for more command line options
 - custom value output

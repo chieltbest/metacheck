@@ -52,7 +52,7 @@ namespace mc {
 				stream << "[ RUN      ] " << suite << name << std::endl
 				       << "Failure after " << (tries - failnum) << "/" << tries << " tries and "
 				       << shrinks << " shrinks." << std::endl
-					<< "Result: " << std::string(type_name<FuncName<Params...>>{}) << std::endl
+				       << "Result: " << std::string(type_name<FuncName<Params...>>{}) << std::endl
 				       << "Parameters:";
 				print_all(stream, "\n\t", std::string(type_name<Params>{})...) << std::endl;
 				stream << "[  FAILED  ] " << suite << name << " (0 ms)" << std::endl;
@@ -144,8 +144,8 @@ namespace mc {
 			template <template <typename...> class Func, unsigned tries, unsigned total_tries,
 			          typename Result, typename... Params>
 			using f = typename check_impl<check_select(
-			        tries - 1, typename call_generated<Func, typename Result::next_seed,
-			                                           Params...>::result{})>::
+			        tries - 1, call_generated<Func, typename Result::next_seed,
+			                                           Params...>::result::value)>::
 			        template f<Func, tries - 1, total_tries,
 			                   call_generated<Func, typename Result::next_seed, Params...>,
 			                   Params...>;
