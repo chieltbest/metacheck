@@ -185,32 +185,43 @@ namespace mc {
 		template <typename L, template <typename> class Pred, typename Found, typename NotFound>
 		using find_if = typename find_if_unpack<L, Pred, Found, NotFound>::f;
 
-		template <unsigned N>
-		struct drop_impl {
-			template <typename T, typename... Ts>
-			using f = typename drop_impl<N - 1>::template f<Ts...>;
+		template<unsigned N, typename ...Ts>
+		struct drop_impl;
+		template <unsigned N, typename T, typename... Ts>
+		struct drop_impl<N, T, Ts...> {
+			using f = typename drop_impl<N - 1, Ts...>::f;
 		};
-		template <>
-		struct drop_impl<0> {
-			template <typename... Ts>
+		template<typename T, typename... Ts>
+		struct drop_impl<0, T, Ts...> {
+			using f = mpl::list<Ts...>;
+		};
+		template <typename... Ts>
+		struct drop_impl<0, Ts...> {
 			using f = mpl::list<Ts...>;
 		};
 
 		template <unsigned N, typename... Ts>
-		using drop = typename drop_impl<N>::template f<Ts...>;
+		using drop = typename drop_impl<N, Ts...>::f;
 
-		template <unsigned N>
-		struct take_impl {
-			template <typename Result, typename T, typename... Ts>
-			using f = push_front<T, typename take_impl<N - 1>::template f<Ts...>>;
+		template <unsigned N, typename... Ts>
+		struct take_impl;
+		template <unsigned N, typename T, typename... Ts>
+		struct take_impl<N, T, Ts...> {
+			template <typename Result>
+			using f = push_front<T, typename take_impl<N - 1, Ts...>::template f<Result>>;
 		};
-		template <>
-		struct take_impl<0> {
-			template <typename Result, typename... Ts>
+		// extra case to solve the ambiguous overload
+		template <typename T, typename... Ts>
+		struct take_impl<0, T, Ts...> {
+			template <typename Result>
 			using f = Result;
+		};
+		template<typename... Ts>
+		struct take_impl<0, Ts...> {
+			template<typename Result> using f = Result;
 		};
 
 		template <unsigned N, typename... Ts>
-		using take = typename take_impl<N>::template f<mpl::list<>, Ts...>;
+		using take = typename take_impl<N, Ts...>::template f<mpl::list<>>;
 	}
 }

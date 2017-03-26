@@ -36,6 +36,14 @@ namespace mc {
 				using shrink = mpl::list<>;
 			};
 
+			template <typename T, typename seed, typename... Alts>
+			struct any {
+				using type   = typename T::type;
+				using shrink = mpl::join<
+				        mpl::list<mpl::list<typename Alts::template generate<seed>::type...>,
+				                  typename T::shrink>>;
+			};
+
 			namespace detail {
 				template <template <typename...> class ResultList, typename... Ts>
 				struct any_shrinker {
@@ -72,9 +80,9 @@ namespace mc {
 			struct list_of {
 				template <typename N>
 				using erase = mpl::join<
-				        mpl::list<mpl::take<N::value, Ts...>, mpl::drop<N::value + 1, Ts...>>>;
+				        value::list_of<mpl::take<N::value, Ts...>, mpl::drop<N::value + 1, Ts...>>>;
 
-				using remove_any = mpl::join<mpl::transform<erase, mpl::uint_sequence_for<Ts...>>>;
+				using remove_any = mpl::transform<erase, mpl::uint_sequence_for<Ts...>>;
 
 				using type   = mpl::list<typename Ts::type...>;
 				using shrink = mpl::join<mpl::list<mpl::list<list_of<>>, remove_any,
@@ -113,9 +121,9 @@ namespace mc {
 			template <typename seed>
 			using generate = detail::gen_result<
 			        typename seed::next::next,
-			        value::uint_<(seed{} % 3 == 0) ?
+			        value::uint_<(seed{} % 8 == 0) ?
 			                             min_num : // try the minimum value many times as it has a
-			                             // higher chance to fail
+			                             // higher chance of failing
 			                             ((typename seed::next{} % (max_num - (min_num + 1))) +
 			                              (min_num + 1))>>;
 		};
@@ -123,8 +131,18 @@ namespace mc {
 		template <typename... Ts>
 		struct any {
 			template <typename seed>
-			using generate = typename mpl::at<(seed{} % sizeof...(Ts)),
-			                                  Ts...>::template generate<typename seed::next>;
+			struct generate {
+				using random_value =
+				        typename mpl::at<(seed{} % sizeof...(Ts)),
+				                         Ts...>::template generate<typename seed::next>;
+
+				// skip one seed as it is used for the alternatives
+				using next_seed = typename random_value::next_seed::next;
+
+				// use a single seed for all the alternatives as they are all exclusive anyways
+				using type = value::any<typename random_value::type,
+				                        typename random_value::next_seed, Ts...>;
+			};
 		};
 
 		namespace detail {
@@ -159,7 +177,7 @@ namespace mc {
 			        detail::generate_all,
 			        mpl::repeat<N::template generate<seed>::type::type::value, Gen>>::
 			        template generate<typename N::template generate<seed>::next_seed,
-			                          value::list<>>;
+			                          value::list_of<>>;
 		};
 
 		namespace detail {
@@ -184,7 +202,8 @@ namespace mc {
 		struct anything {
 			template <typename seed>
 			using generate = typename any<
-			        just<void>, just<decltype(nullptr)>, uint_<>,
+			        uint_<>, just<void>, just<void *>, just<char &&>, just<char *&>,
+			        just<decltype(nullptr)>,
 			        just<std::integral_constant<decltype(nullptr), nullptr>>,
 			        just<detail::func_wrap_t<detail::foo_func>>,
 			        just<detail::func_wrap_t_ptr_t<nullptr>>, just<detail::inconstructible>,
