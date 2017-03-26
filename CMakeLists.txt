@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.0)
 project(metacheck)
 
 set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -ftemplate-depth=2048")
 
 # always rebuild anything that uses the random header
 add_custom_command(OUTPUT src/random.hpp

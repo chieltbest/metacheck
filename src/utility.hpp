@@ -52,6 +52,10 @@ namespace mc {
 	};
 #endif
 
+	// define function specification
+	template<typename Ostream, typename String, typename ...Ts>
+	Ostream &&print_all(Ostream &&stream, String &&prepend, Ts&&... ts);
+
 	template <typename Ostream, typename String>
 	Ostream &&print_all(Ostream &&stream, String &&prepend) {
 		return stream;
@@ -68,7 +72,8 @@ namespace mc {
 	template <template <typename...> class L, typename... Ts>
 	struct print_all_list<L<Ts...>> {
 		template <typename Ostream>
-		constexpr auto operator()(Ostream &&stream) const -> decltype(print_all(stream, "", Ts{}...)) {
+		constexpr auto operator()(Ostream &&stream) const
+		        -> decltype(print_all(stream, "", Ts{}...)) {
 			return print_all(stream, "", Ts{}...);
 		}
 	};

@@ -86,7 +86,7 @@ namespace mc {
 		};
 
 		/// uint template object, creates a uint somewhere within the range min to max, inclusive
-		template <unsigned max = 2048, unsigned min = 0>
+		template <unsigned max = 512, unsigned min = 0>
 		struct uint_ {
 			constexpr static unsigned max_num = max > min ? max : min;
 			constexpr static unsigned min_num = min < max ? min : max;
@@ -95,11 +95,11 @@ namespace mc {
 			template <typename seed>
 			using generate = detail::gen_result<
 			        typename seed::next::next,
-			        value::uint_<(seed{} % 2 == 0) ?
+			        value::uint_<(seed{} % 3 == 0) ?
 			                             min_num : // try the minimum value many times as it has a
 			                             // higher chance to fail
-			                             ((typename seed::next{} % (max_num - min_num)) +
-			                              min_num)>>;
+			                             ((typename seed::next{} % (max_num - (min_num + 1))) +
+			                              (min_num + 1))>>;
 		};
 
 		template <typename... Ts>
@@ -120,7 +120,8 @@ namespace mc {
 			        gen_func_impl<State, typename T::template generate<typename State::next_seed>>;
 
 			template <typename seed>
-			using generate = mpl::fold<gen_func, detail::gen_result<seed, value::list<>>, Ts...>;
+			using generate =
+			        mpl::fold_right<gen_func, detail::gen_result<seed, value::list<>>, Ts...>;
 		};
 	}
 };

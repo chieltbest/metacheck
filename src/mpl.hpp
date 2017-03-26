@@ -56,6 +56,16 @@ namespace mc {
 			using f = B;
 		};
 
+		template <template <typename...> class Func, typename Args>
+		struct call_impl;
+		template <template <typename...> class Func, template <typename...> class Seq,
+		          typename... Ts>
+		struct call_impl<Func, Seq<Ts...>> {
+			using f = Func<Ts...>;
+		};
+		template <template <typename...> class Func, typename Args>
+		using call = typename call_impl<Func, Args>::f;
+
 		template <unsigned N, typename T, typename... Ts>
 		struct at_impl {
 			using f = typename at_impl<N - 1, Ts...>::f;
@@ -67,23 +77,18 @@ namespace mc {
 		template <unsigned N, typename... Ts>
 		using at = typename at_impl<N, Ts...>::f;
 
-		template <bool>
-		struct fold_impl;
-		template <>
-		struct fold_impl<true> {
-			template <template <typename, typename> class Func, typename State, typename T,
-			          typename... Ts>
-			using f = typename fold_impl<(sizeof...(Ts) > 0)>::template f<Func, Func<State, T>,
-			                                                              Ts...>;
-		};
-		template <>
-		struct fold_impl<false> {
-			template <template <typename, typename> class Func, typename State>
+		template <template <typename, typename> class Func, typename State, typename... Ts>
+		struct fold_right_impl {
 			using f = State;
+		};
+		template <template <typename, typename> class Func, typename State, typename T,
+		          typename... Ts>
+		struct fold_right_impl<Func, State, T, Ts...> {
+			using f = Func<typename fold_right_impl<Func, State, Ts...>::f, T>;
 		};
 
 		template <template <typename, typename> class Func, typename... Ts>
-		using fold = typename fold_impl<(sizeof...(Ts) > 1)>::template f<Func, Ts...>;
+		using fold_right = typename fold_right_impl<Func, Ts...>::f;
 
 		template <template <typename> class Func, typename L>
 		struct transform_impl;
@@ -131,5 +136,47 @@ namespace mc {
 		template <typename... Ts>
 		using uint_sequence_for =
 		        typename uint_sequence_for_impl<std::index_sequence_for<Ts...>>::f;
+
+		enum find_if_state { FOUND, NOT_FOUND, RECURSE };
+		constexpr find_if_state find_if_selector(bool found, int left) {
+			return found ? FOUND : left > 0 ? RECURSE : NOT_FOUND;
+		}
+		template <find_if_state>
+		struct find_if_impl;
+		template <>
+		struct find_if_impl<FOUND> {
+			// element was found, call the found function with it
+			template <template <typename> class Pred, typename Found,
+			          typename NotFound, typename Prev, typename... Ts>
+			using f = typename Found::template f<Prev>;
+		};
+		template <>
+		struct find_if_impl<NOT_FOUND> {
+			// element was not found, call the supplied function
+			template <template <typename> class Pred, typename Found, typename NotFound,
+			          typename Prev, typename... Ts>
+			using f = NotFound;
+		};
+		template <>
+		struct find_if_impl<RECURSE> {
+			template <template <typename> class Pred, typename Found, typename NotFound,
+			          typename Prev, typename T, typename... Ts>
+			using f = typename find_if_impl<find_if_selector(
+			        Pred<T>::value, sizeof...(Ts))>::template f<Pred, Found, NotFound, T, Ts...>;
+		};
+		template <typename L, template <typename> class Pred, typename Found, typename NotFound>
+		struct find_if_unpack;
+		template <template <typename...> class Seq, typename... Ts, template <typename> class Pred,
+		          typename Found, typename NotFound>
+		struct find_if_unpack<Seq<Ts...>, Pred, Found, NotFound> {
+			using f = typename find_if_impl<find_if_selector(
+			        false, sizeof...(Ts))>::template f<Pred, Found, NotFound, void, Ts...>;
+		};
+
+		/// find an element that returns true for predicate Pred, calling Found (by calling the
+		/// ::f member with the found element) when the element is found, or returning NotFound
+		/// when the element is not found
+		template <typename L, template <typename> class Pred, typename Found, typename NotFound>
+		using find_if = typename find_if_unpack<L, Pred, Found, NotFound>::f;
 	}
 }

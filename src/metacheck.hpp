@@ -15,19 +15,10 @@
 
 namespace mc {
 	namespace detail {
-		template <template <typename...> class Func, typename Args>
-		struct call_impl;
-		template <template <typename...> class Func, typename... Ts>
-		struct call_impl<Func, mpl::list<Ts...>> {
-			using f = Func<Ts...>;
-		};
-		template <template <typename...> class Func, typename Args>
-		using call = typename call_impl<Func, Args>::f;
-
 		template <template <typename...> class Func, typename seed, typename Result>
 		struct call_generated_result {
 			/// the result of the function being called with the generated parameters
-			using result = call<Func, typename Result::type>;
+			using result = mpl::call<Func, typename Result::type>;
 			/// the next seed that should be used when it is wanted to generate more numbers
 			using next_seed = seed;
 			/// the parameters that were used in the function call; can be any list type
@@ -43,7 +34,7 @@ namespace mc {
 		        call_generated_impl<Func, typename gen::list<Params...>::template generate<seed>>;
 
 		template <template <typename...> class FuncName, unsigned failnum, unsigned tries,
-		          typename seed, typename... Params>
+		          unsigned shrinks, typename seed, typename... Params>
 		struct error {
 			using next_seed = seed;
 
@@ -59,21 +50,22 @@ namespace mc {
 				std::string name{func_name<FuncName>{}};
 
 				stream << "[ RUN      ] " << suite << name << std::endl
-				       << "Failure after " << (tries - failnum) << "/" << tries << " tries."
-				       << std::endl
-				       << "\tParameters:" << std::endl;
-				print_all(stream, "\t\t", std::string(type_name<Params>{})...) << std::endl;
+				       << "Failure after " << (tries - failnum) << "/" << tries << " tries and "
+				       << shrinks << " shrinks." << std::endl
+					<< "Result: " << std::string(type_name<FuncName<Params...>>{}) << std::endl
+				       << "Parameters:";
+				print_all(stream, "\n\t", std::string(type_name<Params>{})...) << std::endl;
 				stream << "[  FAILED  ] " << suite << name << " (0 ms)" << std::endl;
 				return stream;
 			}
 		};
-		template <unsigned failnum, unsigned tries, typename Result>
+		template <unsigned failnum, unsigned tries, unsigned shrinks, typename Result>
 		struct make_error;
-		template <unsigned failnum, unsigned tries, template <typename...> class FuncName,
-		          typename seed, typename... Params>
-		struct make_error<failnum, tries,
+		template <unsigned failnum, unsigned tries, unsigned shrinks,
+		          template <typename...> class FuncName, typename seed, typename... Params>
+		struct make_error<failnum, tries, shrinks,
 		                  call_generated_result<FuncName, seed, gen::value::list<Params...>>> {
-			using f = error<FuncName, failnum, tries, seed, typename Params::type...>;
+			using f = error<FuncName, failnum, tries, shrinks, seed, typename Params::type...>;
 		};
 
 		template <template <typename...> class FuncName, unsigned tries, typename seed>
@@ -97,6 +89,25 @@ namespace mc {
 			}
 		};
 
+		template <typename Params, unsigned shrinks>
+		struct minify_result {
+			using parameters                        = Params;
+			constexpr static unsigned total_shrinks = shrinks;
+		};
+
+		template <template <typename...> class Func, unsigned shrinks = 0>
+		struct minify {
+			// find a test that also fails the function
+			template <typename Params>
+			using call_pred = mpl::bool_<(!mpl::call<Func, typename Params::type>::value)>;
+
+			template <typename Params>
+			using f = mpl::find_if<typename Params::shrink, call_pred,
+			                       minify<Func, shrinks + 1>, // call minify with the new parameters
+			                       // if a smaller failing test case was found
+			                       minify_result<Params, shrinks>>;
+		};
+
 		enum check_state { PASS, FAIL, RECURSE };
 
 		constexpr check_state check_select(unsigned tries, bool pass = true) {
@@ -113,9 +124,20 @@ namespace mc {
 		};
 		template <>
 		struct check_impl<FAIL> {
+			template <typename MinifyResult>
+			struct with_minify_result {
+				template <template <typename...> class Func, unsigned tries, unsigned total_tries,
+				          typename Result>
+				using f = typename make_error<
+				        tries, total_tries, MinifyResult::total_shrinks,
+				        call_generated_result<Func, typename Result::next_seed,
+				                              typename MinifyResult::parameters>>::f;
+			};
+
 			template <template <typename...> class Func, unsigned tries, unsigned total_tries,
 			          typename Result, typename... Params>
-			using f = typename make_error<tries, total_tries, Result>::f;
+			using f = typename with_minify_result<typename minify<Func>::template f<
+			        typename Result::parameters>>::template f<Func, tries, total_tries, Result>;
 		};
 		template <>
 		struct check_impl<RECURSE> {
@@ -156,7 +178,7 @@ namespace mc {
 	/// \tparam Params the parameter generators that create the parameters to be passed into the
 	///             function
 	template <template <typename...> class Func, unsigned tries, typename... Params>
-	using test = detail::test<Func, tries, Params...>;
+	constexpr detail::test<Func, tries, Params...> test{};
 
 	template <typename... Tests>
 	constexpr detail::section<Tests...> section(const char *name, const Tests... tests) {
