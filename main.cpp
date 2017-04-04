@@ -23,7 +23,7 @@ struct reverse_impl {
 };
 template <template <typename...> class Seq, typename T, typename... Ts, typename Result>
 struct reverse_impl<Seq<T, Ts...>, Result> {
-	using f = typename reverse_impl<Seq<Ts...>, mpl::push_front<T, Result>>::f;
+	using f = typename reverse_impl<Seq<Ts...>, mpl::eager::push_front<T, Result>>::f;
 };
 
 template <typename L>

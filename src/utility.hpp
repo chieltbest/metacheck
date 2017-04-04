@@ -90,7 +90,7 @@ namespace mc {
 		template <>
 		struct make_uint_sequence_impl<0> {
 			template <typename C, typename... Ts>
-			using f = kvasir::mpl::c::ucall<C, Ts...>;
+			using f = kvasir::mpl::call<C, Ts...>;
 		};
 
 		template <typename C, typename... Ts>
@@ -100,7 +100,7 @@ namespace mc {
 		using uint_sequence = typename make_uint_sequence_impl<N>::template f<C>;
 
 		template <unsigned N, typename T, typename C>
-		using repeat = uint_sequence<N, kvasir::mpl::c::transform<kvasir::mpl::always<T>, C>>;
+		using repeat = uint_sequence<N, kvasir::mpl::transform<kvasir::mpl::always<T>, C>>;
 
 		template <typename...>
 		constexpr bool always_false = false;

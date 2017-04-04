@@ -48,10 +48,9 @@ namespace mc {
 			struct any {
 				using type = typename T::type;
 				template <typename seed>
-				using shrink =
-				        mpl::c::ucall<mpl::c::join<>,
-				                      mpl::list<typename Ts::template generate<seed>::type...>,
-				                      typename T::template shrink<seed>>;
+				using shrink = mpl::call<mpl::join<>,
+				                         mpl::list<typename Ts::template generate<seed>::type...>,
+				                         typename T::template shrink<seed>>;
 			};
 
 			namespace detail {
@@ -60,50 +59,47 @@ namespace mc {
 					template <typename Idx>
 					struct replace {
 						template <typename Shrink>
-						using f = mpl::c::ucall<
-						        mpl::c::fork<mpl::c::join<ResultList>, mpl::c::take<Idx>,
-						                     mpl::always<mpl::list<Shrink>>,
-						                     mpl::c::drop<mpl::uint_<Idx::value + 1>>>,
-						        Ts...>;
+						using f = mpl::call<mpl::fork<mpl::join<ResultList>, mpl::take<Idx>,
+						                              mpl::always<mpl::list<Shrink>>,
+						                              mpl::drop<mpl::uint_<Idx::value + 1>>>,
+						                    Ts...>;
 					};
 					template <typename Shrinks, typename Idx>
-					using f = mpl::c::call<mpl::c::transform<replace<Idx>>, Shrinks>;
+					using f = mpl::call<mpl::transform<replace<Idx>>, Shrinks>;
 				};
 
 				template <typename seed, typename ResultList, typename... Ts>
-				using shrink_any = mpl::c::ucall<
-				        mpl::c::zip_with<any_shrinker<ResultList, Ts...>, mpl::c::join<>>,
-				        mpl::list<typename Ts::template shrink<seed>...>,
-				        mc::mpl::uint_sequence_for<mpl::c::listify, Ts...>>;
+				using shrink_any =
+				        mpl::call<mpl::zip_with<any_shrinker<ResultList, Ts...>, mpl::join<>>,
+				                  mpl::list<typename Ts::template shrink<seed>...>,
+				                  mc::mpl::uint_sequence_for<mpl::listify, Ts...>>;
 			}
 
 			template <typename... Ts>
 			struct list {
 				using type = mpl::list<typename Ts::type...>;
 				template <typename seed>
-				using shrink = detail::shrink_any<seed, mpl::c::cfe<value::list>, Ts...>;
+				using shrink = detail::shrink_any<seed, mpl::cfe<value::list>, Ts...>;
 			};
 
 			template <typename... Ts>
 			struct list_of {
 				template <typename N>
-				using erase = mpl::c::ucall<
-				        mpl::c::fork<mpl::c::join<mpl::c::cfe<value::list_of>>, mpl::c::take<N>,
-				                     mpl::c::drop<mpl::uint_<N::value + 1>>>,
-				        Ts...>;
+				using erase = mpl::call<mpl::fork<mpl::join<mpl::cfe<value::list_of>>, mpl::take<N>,
+				                                  mpl::drop<mpl::uint_<N::value + 1>>>,
+				                        Ts...>;
 
 				using type = mpl::list<typename Ts::type...>;
 				template <typename seed>
-				using shrink = mpl::c::ucall<
-				        mpl::c::join<>, mpl::list<value::list_of<>>,
-				        mpl::c::ucall<mpl::c::fork<mpl::c::listify,
-				                                   mpl::c::drop<mpl::uint_<sizeof...(Ts) / 2>,
-				                                                mpl::c::cfe<value::list_of>>,
-				                                   mpl::c::take<mpl::uint_<sizeof...(Ts) / 2>,
-				                                                mpl::c::cfe<value::list_of>>>,
-				                      Ts...>,
-				        mc::mpl::uint_sequence_for<mpl::c::transform<mpl::c::cfe<erase>>, Ts...>,
-				        detail::shrink_any<seed, mpl::c::cfe<value::list_of>, Ts...>>;
+				using shrink = mpl::call<
+				        mpl::join<>, mpl::list<value::list_of<>>,
+				        mpl::call<mpl::fork<mpl::listify, mpl::drop<mpl::uint_<sizeof...(Ts) / 2>,
+				                                                    mpl::cfe<value::list_of>>,
+				                            mpl::take<mpl::uint_<sizeof...(Ts) / 2>,
+				                                      mpl::cfe<value::list_of>>>,
+				                  Ts...>,
+				        mc::mpl::uint_sequence_for<mpl::transform<mpl::cfe<erase>>, Ts...>,
+				        detail::shrink_any<seed, mpl::cfe<value::list_of>, Ts...>>;
 			};
 			template <>
 			struct list_of<> {
@@ -151,8 +147,8 @@ namespace mc {
 			template <typename seed>
 			struct generate {
 				using random_value =
-				        typename mpl::c::ucall<mpl::c::at<mpl::uint_<(seed{} % sizeof...(Ts))>>,
-				                               Ts...>::template generate<typename seed::next>;
+				        typename mpl::call<mpl::at<mpl::uint_<(seed{} % sizeof...(Ts))>>,
+				                           Ts...>::template generate<typename seed::next>;
 
 				// skip one seed as it is used for the alternatives
 				using next_seed = typename random_value::next_seed::next;
@@ -166,27 +162,26 @@ namespace mc {
 			template <typename State, typename Result>
 			using gen_func_impl = detail::gen_result<
 			        typename Result::next_seed,
-			        mpl::c::push_front<typename Result::type, typename State::type>>;
+			        mpl::push_front<typename Result::type, typename State::type>>;
 			template <typename State, typename T>
 			using gen_func =
 			        gen_func_impl<State, typename T::template generate<typename State::next_seed>>;
 
 			struct gen_make_result {
 				template <typename Result>
-				using f = gen_result<typename Result::next_seed,
-				                     mpl::c::ucall<typename Result::type>>;
+				using f = gen_result<typename Result::next_seed, mpl::call<typename Result::type>>;
 			};
 
 			template <typename seed, template <typename...> class ResultList>
 			using generate_all =
-			        mpl::c::push_front<detail::gen_result<seed, mpl::c::cfe<ResultList>>,
-			                           mpl::c::fold_right<mpl::c::cfe<gen_func>, gen_make_result>>;
+			        mpl::push_front<detail::gen_result<seed, mpl::cfe<ResultList>>,
+			                        mpl::fold_right<mpl::cfe<gen_func>, gen_make_result>>;
 		}
 
 		template <typename... Ts>
 		struct list {
 			template <typename seed>
-			using generate = mpl::c::ucall<typename detail::generate_all<seed, value::list>, Ts...>;
+			using generate = mpl::call<typename detail::generate_all<seed, value::list>, Ts...>;
 		};
 
 		template <typename Gen, typename N = uint_<256>>

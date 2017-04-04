@@ -101,8 +101,8 @@ namespace mc {
 			using call_pred = kmpl::bool_<(!mpl::call<Func, typename Params::type>::value)>;
 
 			template <typename Params>
-			using f = typename kmpl::c::call<
-			        kmpl::c::find_if<kmpl::c::cfe<call_pred>, kmpl::c::cfe<minify_impl>>,
+			using f = typename kmpl::call<
+			        kmpl::find_if<kmpl::cfe<call_pred>, kmpl::cfe<minify_impl>>,
 			        // TODO use better shrink seeding here
 			        typename Params::template shrink<random_seed>>::template f<Func, shrinks,
 			                                                                   Params>;
