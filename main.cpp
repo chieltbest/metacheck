@@ -30,14 +30,14 @@ template <typename L>
 using reverse = typename reverse_impl<L, typename create_empty<L>::f>::f;
 
 template <typename L>
- using reverse_test = std::is_same<L, reverse<reverse<L>>>;
+using reverse_test = std::is_same<L, reverse<reverse<L>>>;
 
 int main() {
-	std::cout << mc::test_all(mc::section(
-	        "main",
-	        mc::test<reverse_test, // the function to test, should return a bool
-	                 10, // the number of times to repeat the test
-	                 // parameters to use in the test
-	                 mc::gen::list_of<mc::gen::anything>>));
+	std::cout << mc::test_all(
+	        mc::section("main",
+	                    mc::test<reverse_test, // the function to test, should return a bool
+	                             10, // the number of times to repeat the test
+	                             // parameters to use in the test
+	                             mc::gen::list_of<mc::gen::anything>>));
 	return 0;
 }

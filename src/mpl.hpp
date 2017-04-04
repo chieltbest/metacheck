@@ -185,13 +185,13 @@ namespace mc {
 		template <typename L, template <typename> class Pred, typename Found, typename NotFound>
 		using find_if = typename find_if_unpack<L, Pred, Found, NotFound>::f;
 
-		template<unsigned N, typename ...Ts>
+		template <unsigned N, typename... Ts>
 		struct drop_impl;
 		template <unsigned N, typename T, typename... Ts>
 		struct drop_impl<N, T, Ts...> {
 			using f = typename drop_impl<N - 1, Ts...>::f;
 		};
-		template<typename T, typename... Ts>
+		template <typename T, typename... Ts>
 		struct drop_impl<0, T, Ts...> {
 			using f = mpl::list<Ts...>;
 		};
@@ -216,9 +216,10 @@ namespace mc {
 			template <typename Result>
 			using f = Result;
 		};
-		template<typename... Ts>
+		template <typename... Ts>
 		struct take_impl<0, Ts...> {
-			template<typename Result> using f = Result;
+			template <typename Result>
+			using f = Result;
 		};
 
 		template <unsigned N, typename... Ts>
