@@ -4,8 +4,10 @@
 //          http://www.boost.org/LICENSE_1_0.txt)
 #pragma once
 
-#include <string>
+#include <type_traits>
+#include <kvasir/mpl/mpl.hpp>
 
+#include <string>
 #include <typeinfo>
 
 #ifdef __GNUG__
@@ -53,8 +55,8 @@ namespace mc {
 #endif
 
 	// define function specification
-	template<typename Ostream, typename String, typename ...Ts>
-	Ostream &&print_all(Ostream &&stream, String &&prepend, Ts&&... ts);
+	template <typename Ostream, typename String, typename... Ts>
+	Ostream &&print_all(Ostream &&stream, String &&prepend, Ts &&... ts);
 
 	template <typename Ostream, typename String>
 	Ostream &&print_all(Ostream &&stream, String &&prepend) {
@@ -62,8 +64,8 @@ namespace mc {
 	}
 
 	template <typename Ostream, typename String, typename T, typename... Ts>
-	auto print_all(Ostream &&stream, String &&prepend, T &&t, Ts &&... ts) -> decltype(print_all(
-		stream << prepend << t, prepend, ts...)) {
+	auto print_all(Ostream &&stream, String &&prepend, T &&t, Ts &&... ts)
+	        -> decltype(print_all(stream << prepend << t, prepend, ts...)) {
 		return print_all(stream << prepend << t, prepend, ts...);
 	};
 
@@ -77,4 +79,46 @@ namespace mc {
 			return print_all(stream, "", Ts{}...);
 		}
 	};
+
+	namespace mpl {
+		template <unsigned N>
+		struct make_uint_sequence_impl {
+			template <typename C, typename... Ts>
+			using f = typename make_uint_sequence_impl<N - 1>::template f<
+			        C, kvasir::mpl::uint_<N - 1>, Ts...>;
+		};
+		template <>
+		struct make_uint_sequence_impl<0> {
+			template <typename C, typename... Ts>
+			using f = kvasir::mpl::c::ucall<C, Ts...>;
+		};
+
+		template <typename C, typename... Ts>
+		using uint_sequence_for = typename make_uint_sequence_impl<sizeof...(Ts)>::template f<C>;
+
+		template <unsigned N, typename C>
+		using uint_sequence = typename make_uint_sequence_impl<N>::template f<C>;
+
+		template <unsigned N, typename T, typename C>
+		using repeat = uint_sequence<N, kvasir::mpl::c::transform<kvasir::mpl::always<T>, C>>;
+
+		template <typename...>
+		constexpr bool always_false = false;
+
+		/// throw a static assertion that prints the types Ts
+		template <typename... Ts>
+		struct assert_false {
+			static_assert(always_false<Ts...>, "");
+		};
+
+		template <template <typename...> class Func, typename Args>
+		struct call_impl;
+		template <template <typename...> class Func, template <typename...> class Seq,
+		          typename... Ts>
+		struct call_impl<Func, Seq<Ts...>> {
+			using f = Func<Ts...>;
+		};
+		template <template <typename...> class Func, typename Args>
+		using call = typename call_impl<Func, Args>::f;
+	}
 }

@@ -12,85 +12,103 @@
 #include <limits>
 #include <type_traits>
 
+#include <kvasir/mpl/mpl.hpp>
+
 #include "random.hpp"
-#include "mpl.hpp"
+#include "utility.hpp"
 
 namespace mc {
 	namespace gen {
+		namespace mpl = kvasir::mpl;
+
 		namespace value {
 			template <typename T>
 			struct just {
-				using type   = T;
+				using type = T;
+				template <typename>
 				using shrink = mpl::list<>;
 			};
 
 			template <unsigned value>
 			struct uint_ {
-				using type   = mpl::uint_<value>;
-				using shrink = mpl::list<uint_<0>, uint_<value / 2>, uint_<value - 1>>;
+				using type = mpl::uint_<value>;
+				template <typename>
+				using shrink = mpl::list<value::uint_<0>, value::uint_<value / 2>,
+				                         value::uint_<value - 1>>;
 			};
 			template <>
 			struct uint_<0> {
 				using type = mpl::uint_<0>;
 				// unable to shrink 0
+				template <typename>
 				using shrink = mpl::list<>;
 			};
 
-			template <typename T, typename seed, typename... Alts>
+			template <typename T, typename... Ts>
 			struct any {
-				using type   = typename T::type;
-				using shrink = mpl::join<
-				        mpl::list<mpl::list<typename Alts::template generate<seed>::type...>,
-				                  typename T::shrink>>;
+				using type = typename T::type;
+				template <typename seed>
+				using shrink =
+				        mpl::c::ucall<mpl::c::join<>,
+				                      mpl::list<typename Ts::template generate<seed>::type...>,
+				                      typename T::template shrink<seed>>;
 			};
 
 			namespace detail {
-				template <template <typename...> class ResultList, typename... Ts>
+				template <typename ResultList, typename... Ts>
 				struct any_shrinker {
 					template <typename Idx>
-					struct replacer {
+					struct replace {
 						template <typename Shrink>
-						struct replace_zip {
-							template <typename Elem, typename CurIdx>
-							using f = typename mpl::conditional<Idx{} ==
-							                                    CurIdx{}>::template f<Shrink, Elem>;
-						};
-						template <typename Shrink>
-						using f = mpl::zip_with<replace_zip<Shrink>::template f, ResultList<Ts...>,
-						                        mpl::uint_sequence_for<Ts...>>;
+						using f = mpl::c::ucall<
+						        mpl::c::fork<mpl::c::join<ResultList>, mpl::c::take<Idx>,
+						                     mpl::always<mpl::list<Shrink>>,
+						                     mpl::c::drop<mpl::uint_<Idx::value + 1>>>,
+						        Ts...>;
 					};
 					template <typename Shrinks, typename Idx>
-					using zip_func = mpl::transform<replacer<Idx>::template f, Shrinks>;
+					using f = mpl::c::call<mpl::c::transform<replace<Idx>>, Shrinks>;
 				};
 
-				template <template <typename...> class ResultList, typename... Ts>
-				using shrink_any =
-				        mpl::join<mpl::zip_with<any_shrinker<ResultList, Ts...>::template zip_func,
-				                                mpl::list<typename Ts::shrink...>,
-				                                mpl::uint_sequence_for<Ts...>>>;
+				template <typename seed, typename ResultList, typename... Ts>
+				using shrink_any = mpl::c::ucall<
+				        mpl::c::zip_with<any_shrinker<ResultList, Ts...>, mpl::c::join<>>,
+				        mpl::list<typename Ts::template shrink<seed>...>,
+				        mc::mpl::uint_sequence_for<mpl::c::listify, Ts...>>;
 			}
 
 			template <typename... Ts>
 			struct list {
-				using type   = mpl::list<typename Ts::type...>;
-				using shrink = detail::shrink_any<value::list, Ts...>;
+				using type = mpl::list<typename Ts::type...>;
+				template <typename seed>
+				using shrink = detail::shrink_any<seed, mpl::c::cfe<value::list>, Ts...>;
 			};
 
 			template <typename... Ts>
 			struct list_of {
 				template <typename N>
-				using erase = mpl::join<
-				        value::list_of<mpl::take<N::value, Ts...>, mpl::drop<N::value + 1, Ts...>>>;
+				using erase = mpl::c::ucall<
+				        mpl::c::fork<mpl::c::join<mpl::c::cfe<value::list_of>>, mpl::c::take<N>,
+				                     mpl::c::drop<mpl::uint_<N::value + 1>>>,
+				        Ts...>;
 
-				using remove_any = mpl::transform<erase, mpl::uint_sequence_for<Ts...>>;
-
-				using type   = mpl::list<typename Ts::type...>;
-				using shrink = mpl::join<mpl::list<mpl::list<list_of<>>, remove_any,
-				                                   detail::shrink_any<value::list_of, Ts...>>>;
+				using type = mpl::list<typename Ts::type...>;
+				template <typename seed>
+				using shrink = mpl::c::ucall<
+				        mpl::c::join<>, mpl::list<value::list_of<>>,
+				        mpl::c::ucall<mpl::c::fork<mpl::c::listify,
+				                                   mpl::c::drop<mpl::uint_<sizeof...(Ts) / 2>,
+				                                                mpl::c::cfe<value::list_of>>,
+				                                   mpl::c::take<mpl::uint_<sizeof...(Ts) / 2>,
+				                                                mpl::c::cfe<value::list_of>>>,
+				                      Ts...>,
+				        mc::mpl::uint_sequence_for<mpl::c::transform<mpl::c::cfe<erase>>, Ts...>,
+				        detail::shrink_any<seed, mpl::c::cfe<value::list_of>, Ts...>>;
 			};
 			template <>
 			struct list_of<> {
-				using type   = mpl::list<>;
+				using type = mpl::list<>;
+				template <typename>
 				using shrink = mpl::list<>;
 			};
 		}
@@ -112,7 +130,7 @@ namespace mc {
 		};
 
 		/// uint template object, creates a uint somewhere within the range min to max, inclusive
-		template <unsigned max = 512, unsigned min = 0>
+		template <unsigned max = 2048, unsigned min = 0>
 		struct uint_ {
 			constexpr static unsigned max_num = max > min ? max : min;
 			constexpr static unsigned min_num = min < max ? min : max;
@@ -124,7 +142,7 @@ namespace mc {
 			        value::uint_<(seed{} % 8 == 0) ?
 			                             min_num : // try the minimum value many times as it has a
 			                             // higher chance of failing
-			                             ((typename seed::next{} % (max_num - (min_num + 1))) +
+			                             ((typename seed::next{} % (max_num - (min_num))) +
 			                              (min_num + 1))>>;
 		};
 
@@ -133,51 +151,51 @@ namespace mc {
 			template <typename seed>
 			struct generate {
 				using random_value =
-				        typename mpl::at<(seed{} % sizeof...(Ts)),
-				                         Ts...>::template generate<typename seed::next>;
+				        typename mpl::c::ucall<mpl::c::at<mpl::uint_<(seed{} % sizeof...(Ts))>>,
+				                               Ts...>::template generate<typename seed::next>;
 
 				// skip one seed as it is used for the alternatives
 				using next_seed = typename random_value::next_seed::next;
 
 				// use a single seed for all the alternatives as they are all exclusive anyways
-				using type = value::any<typename random_value::type,
-				                        typename random_value::next_seed, Ts...>;
+				using type = value::any<typename random_value::type, Ts...>;
 			};
 		};
 
 		namespace detail {
-			template <typename... Ts>
-			struct generate_all {
-				template <typename State, typename Result>
-				using gen_func_impl = detail::gen_result<
-				        typename Result::next_seed,
-				        mpl::push_front<typename Result::type, typename State::type>>;
-				template <typename State, typename T>
-				using gen_func =
-				        gen_func_impl<State,
-				                      typename T::template generate<typename State::next_seed>>;
+			template <typename State, typename Result>
+			using gen_func_impl = detail::gen_result<
+			        typename Result::next_seed,
+			        mpl::c::push_front<typename Result::type, typename State::type>>;
+			template <typename State, typename T>
+			using gen_func =
+			        gen_func_impl<State, typename T::template generate<typename State::next_seed>>;
 
-				template <typename seed, typename ResultList>
-				using generate =
-				        mpl::fold_right<gen_func, detail::gen_result<seed, ResultList>, Ts...>;
+			struct gen_make_result {
+				template <typename Result>
+				using f = gen_result<typename Result::next_seed,
+				                     mpl::c::ucall<typename Result::type>>;
 			};
+
+			template <typename seed, template <typename...> class ResultList>
+			using generate_all =
+			        mpl::c::push_front<detail::gen_result<seed, mpl::c::cfe<ResultList>>,
+			                           mpl::c::fold_right<mpl::c::cfe<gen_func>, gen_make_result>>;
 		}
 
 		template <typename... Ts>
 		struct list {
 			template <typename seed>
-			using generate =
-			        typename detail::generate_all<Ts...>::template generate<seed, value::list<>>;
+			using generate = mpl::c::ucall<typename detail::generate_all<seed, value::list>, Ts...>;
 		};
 
-		template <typename Gen, typename N = uint_<>>
+		template <typename Gen, typename N = uint_<256>>
 		struct list_of {
 			template <typename seed>
-			using generate = typename mpl::call<
-			        detail::generate_all,
-			        mpl::repeat<N::template generate<seed>::type::type::value, Gen>>::
-			        template generate<typename N::template generate<seed>::next_seed,
-			                          value::list_of<>>;
+			using generate = mc::mpl::repeat<
+			        N::template generate<seed>::type::type::value, Gen,
+			        detail::generate_all<typename N::template generate<seed>::next_seed,
+			                             value::list_of>>;
 		};
 
 		namespace detail {
@@ -205,10 +223,12 @@ namespace mc {
 			        uint_<>, just<void>, just<void *>, just<char &&>, just<char *&>,
 			        just<decltype(nullptr)>,
 			        just<std::integral_constant<decltype(nullptr), nullptr>>,
-			        just<detail::func_wrap_t<detail::foo_func>>,
-			        just<detail::func_wrap_t_ptr_t<nullptr>>, just<detail::inconstructible>,
+			        just<detail::inconstructible>
+			        // just<detail::func_wrap_t<detail::foo_func>>,
+			        // just<detail::func_wrap_t_ptr_t<nullptr>>
+
 			        // anything can also be a list of anything, or a list of a list of anything
-			        list_of<anything, uint_<5>>>::template generate<seed>;
+			        /*list_of<anything, uint_<5>>*/>::template generate<seed>;
 		};
 	}
 };

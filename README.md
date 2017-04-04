@@ -14,6 +14,10 @@ Another interesting capability is to select random types from a list of error pr
 The output of metacheck is currently based on google test, with planned support for JUnit XML 
 test reports.
 
+## Writing tests
+
+
+
 See the main.cpp file for example usage of metacheck.
 
 ## Todo

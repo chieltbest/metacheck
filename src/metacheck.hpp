@@ -4,21 +4,22 @@
 //          http://www.boost.org/LICENSE_1_0.txt)
 #pragma once
 
-#include <utility>
-#include <tuple>
 #include <string>
+#include <tuple>
+#include <utility>
 
-#include "utility.hpp"
-#include "random.hpp"
 #include "generators.hpp"
-#include "mpl.hpp"
+#include "random.hpp"
+#include "utility.hpp"
 
 namespace mc {
+	namespace kmpl = kvasir::mpl;
+
 	namespace detail {
 		template <template <typename...> class Func, typename seed, typename Result>
 		struct call_generated_result {
 			/// the result of the function being called with the generated parameters
-			using result = mpl::call<Func, typename Result::type>;
+			using result = mc::mpl::call<Func, typename Result::type>;
 			/// the next seed that should be used when it is wanted to generate more numbers
 			using next_seed = seed;
 			/// the parameters that were used in the function call; can be any list type
@@ -39,11 +40,7 @@ namespace mc {
 			using next_seed = seed;
 
 			// return a failure when evaluated
-			explicit constexpr operator bool() const {
-				return false;
-			}
-
-			constexpr static bool passed = false;
+			constexpr static bool value = false;
 
 			template <typename Ostream>
 			auto &&print(Ostream &&stream, std::string &suite) const {
@@ -73,11 +70,7 @@ namespace mc {
 			using next_seed = seed;
 
 			// return a success when evaluated
-			explicit constexpr operator bool() const {
-				return true;
-			}
-
-			constexpr static bool passed = true;
+			constexpr static bool value = true;
 
 			template <typename Ostream>
 			auto &&print(Ostream &&stream, std::string &suite) const {
@@ -95,17 +88,30 @@ namespace mc {
 			constexpr static unsigned total_shrinks = shrinks;
 		};
 
+		template <typename... Ts>
+		struct minify_impl {
+			template <template <typename...> class Func, unsigned shrinks, typename Params>
+			using f = minify_result<Params, shrinks>;
+		};
+
 		template <template <typename...> class Func, unsigned shrinks = 0>
 		struct minify {
 			// find a test that also fails the function
 			template <typename Params>
-			using call_pred = mpl::bool_<(!mpl::call<Func, typename Params::type>::value)>;
+			using call_pred = kmpl::bool_<(!mpl::call<Func, typename Params::type>::value)>;
 
 			template <typename Params>
-			using f = mpl::find_if<typename Params::shrink, call_pred,
-			                       minify<Func, shrinks + 1>, // call minify with the new parameters
-			                       // if a smaller failing test case was found
-			                       minify_result<Params, shrinks>>;
+			using f = typename kmpl::c::call<
+			        kmpl::c::find_if<kmpl::c::cfe<call_pred>, kmpl::c::cfe<minify_impl>>,
+			        // TODO use better shrink seeding here
+			        typename Params::template shrink<random_seed>>::template f<Func, shrinks,
+			                                                                   Params>;
+		};
+
+		template <typename T, typename... Ts>
+		struct minify_impl<T, Ts...> {
+			template <template <typename...> class Func, unsigned shrinks, typename Params>
+			using f = typename minify<Func, shrinks + 1>::template f<T>;
 		};
 
 		enum check_state { PASS, FAIL, RECURSE };
@@ -144,8 +150,8 @@ namespace mc {
 			template <template <typename...> class Func, unsigned tries, unsigned total_tries,
 			          typename Result, typename... Params>
 			using f = typename check_impl<check_select(
-			        tries - 1, call_generated<Func, typename Result::next_seed,
-			                                           Params...>::result::value)>::
+			        tries - 1,
+			        call_generated<Func, typename Result::next_seed, Params...>::result::value)>::
 			        template f<Func, tries - 1, total_tries,
 			                   call_generated<Func, typename Result::next_seed, Params...>,
 			                   Params...>;
@@ -155,9 +161,7 @@ namespace mc {
 	template <template <typename...> class Func, unsigned tries, typename seed, typename... Params>
 	using check = typename detail::check_impl<detail::check_select(tries)>::template f<
 	        Func, tries + 1, tries,
-	        detail::call_generated_result<mpl::always<mpl::bool_<true>>::template f, seed,
-	                                      gen::value::list<>>,
-	        Params...>;
+	        detail::call_generated_result<kmpl::list, seed, gen::value::list<>>, Params...>;
 
 	namespace detail {
 		template <template <typename...> class Func, unsigned tries, typename... Params>
@@ -249,12 +253,11 @@ namespace mc {
 		}
 
 		template <typename State, typename TestResult>
-		constexpr auto push_test_result(const State state, TestResult result)
-		        -> section_temp<decltype(std::tuple_cat(state.results, std::make_tuple(result))),
-		                        typename TestResult::next_seed,
-		                        State::num_passed + (TestResult::passed ? 1 : 0),
-		                        State::num_failed + (TestResult::passed ? 0 : 1)> {
-			return {std::tuple_cat(state.results, std::make_tuple(result)), state.name};
+		constexpr auto push_test_result(const State state, TestResult result) -> section_temp<
+		        decltype(std::tuple_cat(state.results, std::tuple<TestResult>{result})),
+		        typename TestResult::next_seed, State::num_passed + (TestResult::value ? 1 : 0),
+		        State::num_failed + (TestResult::value ? 0 : 1)> {
+			return {std::tuple_cat(state.results, std::tuple<TestResult>{result}), state.name};
 		}
 
 		template <typename State, template <typename...> class Func, unsigned tries,
