@@ -4,10 +4,10 @@
 //          http://www.boost.org/LICENSE_1_0.txt)
 #pragma once
 
+#include <iostream>
 #include <string>
 #include <tuple>
 #include <utility>
-#include <iostream>
 
 #include "generators.hpp"
 #include "random.hpp"
@@ -321,6 +321,10 @@ namespace mc {
 		template <typename Result>
 		struct result_printer_impl {
 			const Result result;
+
+			constexpr operator int() const {
+				return Result::num_failed == 0 ? 0 : 1;
+			}
 
 			template <typename Ostream>
 			friend auto &&operator<<(Ostream &&stream, const result_printer_impl<Result> lhs) {
