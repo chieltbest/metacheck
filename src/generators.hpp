@@ -216,14 +216,14 @@ namespace mc {
 			template <typename seed>
 			using generate = typename any<
 			        uint_<>, just<void>, just<void *>, just<char &&>, just<char *&>,
+			        just<void (*)()>, just<char[]>, just<char (*)[]>, just<char (&)[]>,
 			        just<decltype(nullptr)>,
 			        just<std::integral_constant<decltype(nullptr), nullptr>>,
-			        just<detail::inconstructible>
-			        // just<detail::func_wrap_t<detail::foo_func>>,
-			        // just<detail::func_wrap_t_ptr_t<nullptr>>
+			        just<detail::inconstructible>, just<detail::func_wrap_t<detail::foo_func>>,
+			        just<detail::func_wrap_t_ptr_t<nullptr>>,
 
 			        // anything can also be a list of anything, or a list of a list of anything
-			        /*list_of<anything, uint_<5>>*/>::template generate<seed>;
+			        list_of<anything, uint_<5>>>::template generate<seed>;
 		};
 	}
 };
