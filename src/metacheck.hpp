@@ -7,6 +7,7 @@
 #include <string>
 #include <tuple>
 #include <utility>
+#include <iostream>
 
 #include "generators.hpp"
 #include "random.hpp"
