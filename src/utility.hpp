@@ -120,5 +120,20 @@ namespace mc {
 		};
 		template <template <typename...> class Func, typename Args>
 		using call = typename call_impl<Func, Args>::f;
+
+		// utility functions for convenience within tests
+
+		/// both values must be equal, otherwise the types are returned
+		template <typename A, typename B>
+		struct equal {
+			constexpr static bool value = A::value == B::value;
+		};
+
+		/// function where all parameters must be true, if not all the types will be returned
+		template <typename... Ts>
+		struct all {
+			constexpr static bool value =
+			        kvasir::mpl::call<kvasir::mpl::all<kvasir::mpl::identity>, Ts...>::value;
+		};
 	}
 }
