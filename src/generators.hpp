@@ -44,6 +44,19 @@ namespace mc {
 				using shrink = mpl::list<>;
 			};
 
+			template <bool value>
+			struct bool_ {
+				using type = mpl::bool_<value>;
+				template <typename>
+				using shrink = mpl::list<value::bool_<false>>;
+			};
+			template <>
+			struct bool_<false> {
+				using type = mpl::bool_<false>;
+				template <typename>
+				using shrink = mpl::list<>;
+			};
+
 			template <typename T, typename... Ts>
 			struct any {
 				using type = typename T::type;
@@ -140,6 +153,12 @@ namespace mc {
 			                             // higher chance of failing
 			                             ((typename seed::next{} % (max_num - (min_num))) +
 			                              (min_num + 1))>>;
+		};
+
+		struct bool_ {
+			template <typename seed>
+			using generate =
+			        detail::gen_result<typename seed::next, value::bool_<((seed{} % 2) == 1)>>;
 		};
 
 		template <typename... Ts>
