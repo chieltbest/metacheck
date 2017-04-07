@@ -25,100 +25,31 @@ namespace mc {
 			template <typename T>
 			struct just {
 				using type = T;
-				template <typename>
-				using shrink = mpl::list<>;
 			};
 
 			template <unsigned value>
 			struct uint_ {
 				using type = mpl::uint_<value>;
-				template <typename>
-				using shrink = mpl::list<value::uint_<0>, value::uint_<value / 2>,
-				                         value::uint_<value - 1>>;
-			};
-			template <>
-			struct uint_<0> {
-				using type = mpl::uint_<0>;
-				// unable to shrink 0
-				template <typename>
-				using shrink = mpl::list<>;
 			};
 
 			template <bool value>
 			struct bool_ {
 				using type = mpl::bool_<value>;
-				template <typename>
-				using shrink = mpl::list<value::bool_<false>>;
-			};
-			template <>
-			struct bool_<false> {
-				using type = mpl::bool_<false>;
-				template <typename>
-				using shrink = mpl::list<>;
 			};
 
-			template <typename T, typename... Ts>
+			template <typename T, typename Seed, typename... Ts>
 			struct any {
 				using type = typename T::type;
-				template <typename seed>
-				using shrink = mpl::call<mpl::join<>,
-				                         mpl::list<typename Ts::template generate<seed>::type...>,
-				                         typename T::template shrink<seed>>;
 			};
-
-			namespace detail {
-				template <typename ResultList, typename... Ts>
-				struct any_shrinker {
-					template <typename Idx>
-					struct replace {
-						template <typename Shrink>
-						using f = mpl::call<mpl::fork<mpl::join<ResultList>, mpl::take<Idx>,
-						                              mpl::always<mpl::list<Shrink>>,
-						                              mpl::drop<mpl::uint_<Idx::value + 1>>>,
-						                    Ts...>;
-					};
-					template <typename Shrinks, typename Idx>
-					using f = mpl::call<mpl::transform<replace<Idx>>, Shrinks>;
-				};
-
-				template <typename seed, typename ResultList, typename... Ts>
-				using shrink_any =
-				        mpl::call<mpl::zip_with<any_shrinker<ResultList, Ts...>, mpl::join<>>,
-				                  mpl::list<typename Ts::template shrink<seed>...>,
-				                  mc::mpl::uint_sequence_for<mpl::listify, Ts...>>;
-			}
 
 			template <typename... Ts>
 			struct list {
 				using type = mpl::list<typename Ts::type...>;
-				template <typename seed>
-				using shrink = detail::shrink_any<seed, mpl::cfe<value::list>, Ts...>;
 			};
 
 			template <typename... Ts>
 			struct list_of {
-				template <typename N>
-				using erase = mpl::call<mpl::fork<mpl::join<mpl::cfe<value::list_of>>, mpl::take<N>,
-				                                  mpl::drop<mpl::uint_<N::value + 1>>>,
-				                        Ts...>;
-
 				using type = mpl::list<typename Ts::type...>;
-				template <typename seed>
-				using shrink = mpl::call<
-				        mpl::join<>, mpl::list<value::list_of<>>,
-				        mpl::call<mpl::fork<mpl::listify, mpl::drop<mpl::uint_<sizeof...(Ts) / 2>,
-				                                                    mpl::cfe<value::list_of>>,
-				                            mpl::take<mpl::uint_<sizeof...(Ts) / 2>,
-				                                      mpl::cfe<value::list_of>>>,
-				                  Ts...>,
-				        mc::mpl::uint_sequence_for<mpl::transform<mpl::cfe<erase>>, Ts...>,
-				        detail::shrink_any<seed, mpl::cfe<value::list_of>, Ts...>>;
-			};
-			template <>
-			struct list_of<> {
-				using type = mpl::list<>;
-				template <typename>
-				using shrink = mpl::list<>;
 			};
 		}
 
@@ -173,7 +104,7 @@ namespace mc {
 				using next_seed = typename random_value::next_seed::next;
 
 				// use a single seed for all the alternatives as they are all exclusive anyways
-				using type = value::any<typename random_value::type, Ts...>;
+				using type = value::any<typename random_value::type, next_seed, Ts...>;
 			};
 		};
 
@@ -243,6 +174,91 @@ namespace mc {
 
 			        // anything can also be a list of anything, or a list of a list of anything
 			        list_of<anything, uint_<5>>>::template generate<seed>;
+		};
+	}
+
+	// value shrinking functions
+	namespace gen {
+		template <typename T>
+		struct shrink {
+			using type = mpl::list<>;
+		};
+
+		template <typename T>
+		struct shrink<value::just<T>> {
+			using type = mpl::list<>;
+		};
+
+		template <unsigned val>
+		struct shrink<value::uint_<val>> {
+			using type = mpl::list<value::uint_<0>, value::uint_<val / 2>, value::uint_<val - 1>>;
+		};
+
+		template <>
+		struct shrink<value::uint_<0>> {
+			using type = mpl::list<>;
+		};
+
+		template <>
+		struct shrink<value::bool_<true>> {
+			using type = mpl::list<value::bool_<false>>;
+		};
+		// bool false falls back to default
+
+		template <typename T, typename Seed, typename... Ts>
+		struct shrink<value::any<T, Seed, Ts...>> {
+			using type =
+			        mpl::call<mpl::join<>, mpl::list<typename Ts::template generate<Seed>::type...>,
+			                  typename shrink<T>::type>;
+		};
+
+		namespace detail {
+			template <typename ResultList, typename... Ts>
+			struct any_shrinker {
+				template <typename Idx>
+				struct replace {
+					template <typename Shrink>
+					using f = mpl::call<mpl::fork<mpl::join<ResultList>, mpl::take<Idx>,
+					                              mpl::always<mpl::list<Shrink>>,
+					                              mpl::drop<mpl::uint_<Idx::value + 1>>>,
+					                    Ts...>;
+				};
+				template <typename Shrinks, typename Idx>
+				using f = mpl::call<mpl::transform<replace<Idx>>, Shrinks>;
+			};
+
+			template <typename ResultList, typename... Ts>
+			using shrink_any =
+			        mpl::call<mpl::zip_with<any_shrinker<ResultList, Ts...>, mpl::join<>>,
+			                  mpl::list<typename shrink<Ts>::type...>,
+			                  mc::mpl::uint_sequence_for<mpl::listify, Ts...>>;
+		}
+
+		template <typename... Ts>
+		struct shrink<value::list_of<Ts...>> {
+			template <typename N>
+			using erase = mpl::call<mpl::fork<mpl::join<mpl::cfe<value::list_of>>, mpl::take<N>,
+			                                  mpl::drop<mpl::uint_<N::value + 1>>>,
+			                        Ts...>;
+
+			using type = mpl::call<
+			        mpl::join<>, mpl::list<value::list_of<>>,
+			        mpl::call<mpl::fork<mpl::listify, mpl::drop<mpl::uint_<sizeof...(Ts) / 2>,
+			                                                    mpl::cfe<value::list_of>>,
+			                            mpl::take<mpl::uint_<sizeof...(Ts) / 2>,
+			                                      mpl::cfe<value::list_of>>>,
+			                  Ts...>,
+			        mc::mpl::uint_sequence_for<mpl::transform<mpl::cfe<erase>>, Ts...>,
+			        detail::shrink_any<mpl::cfe<value::list_of>, Ts...>>;
+		};
+		template <>
+		struct shrink<value::list_of<>> {
+			using type = mpl::list<>;
+		};
+
+		template <typename... Ts>
+		struct shrink<value::list<Ts...>> {
+			using type = detail::shrink_any<mpl::cfe<value::list>, Ts...>;
 		};
 	}
 };
