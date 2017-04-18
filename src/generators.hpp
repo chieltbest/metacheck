@@ -79,11 +79,10 @@ namespace mc {
 			template <typename seed>
 			using generate = detail::gen_result<
 			        typename seed::next::next,
-			        value::uint_<(seed{} % 8 == 0) ?
-			                             min_num : // try the minimum value many times as it has a
-			                             // higher chance of failing
-			                             ((typename seed::next{} % (max_num - (min_num))) +
-			                              (min_num + 1))>>;
+			        value::uint_<(((unsigned(seed{}) >> (typename seed::next{} % 32))
+			                       // random distribution weighted towards small values
+			                       % (max_num - (min_num))) +
+			                      (min_num + 1))>>;
 		};
 
 		struct bool_ {
@@ -104,7 +103,7 @@ namespace mc {
 				using next_seed = typename random_value::next_seed::next;
 
 				// use a single seed for all the alternatives as they are all exclusive anyways
-				using type = value::any<typename random_value::type, next_seed, Ts...>;
+				using type = value::any<typename random_value::type, next_seed>;
 			};
 		};
 
@@ -224,7 +223,7 @@ namespace mc {
 					                    Ts...>;
 				};
 				template <typename Shrinks, typename Idx>
-				using f = mpl::call<mpl::transform<replace<Idx>>, Shrinks>;
+				using f = mpl::call<mpl::unpack<mpl::transform<replace<Idx>>>, Shrinks>;
 			};
 
 			template <typename ResultList, typename... Ts>

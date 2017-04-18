@@ -23,11 +23,14 @@ namespace mc {
 		}
 	};
 
-	// TODO optionally use a "RANDOM" define
+#ifdef METACHECK_RANDOM
+	using random_seed = seed_state<(METACHECK_RANDOM)>;
+#else
 	// initialize the seed with the hashed time for randomness sake
 	using random_seed =
 	        seed_state<seed_state<(((((__TIME__[1] - '0') + (__TIME__[0] - '0') * 10) * 60) +
 	                                ((__TIME__[4] - '0') + (__TIME__[3] - '0') * 10)) *
 	                               60) +
 	                              ((__TIME__[7] - '0') + (__TIME__[6] - '0') * 10)>{}>;
+#endif
 }

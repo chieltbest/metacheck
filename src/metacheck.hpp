@@ -89,12 +89,6 @@ namespace mc {
 			constexpr static unsigned total_shrinks = shrinks;
 		};
 
-		template <typename... Ts>
-		struct minify_impl {
-			template <template <typename...> class Func, unsigned shrinks, typename Params>
-			using f = minify_result<Params, shrinks>;
-		};
-
 		template <template <typename...> class Func, unsigned shrinks = 0>
 		struct minify {
 			// find a test that also fails the function
@@ -102,17 +96,11 @@ namespace mc {
 			using call_pred = kmpl::bool_<(!mpl::call<Func, typename Params::type>::value)>;
 
 			template <typename Params>
-			using f =
-			        typename kmpl::call<kmpl::find_if<kmpl::cfe<call_pred>, kmpl::cfe<minify_impl>>,
-			                            // TODO use better shrink seeding here
-			                            typename Params::template shrink<random_seed>>::
-			                template f<Func, shrinks, Params>;
-		};
-
-		template <typename T, typename... Ts>
-		struct minify_impl<T, Ts...> {
-			template <template <typename...> class Func, unsigned shrinks, typename Params>
-			using f = typename minify<Func, shrinks + 1>::template f<T>;
+			using f = typename kmpl::call<
+			        kmpl::unpack<kmpl::find_if<kmpl::cfe<call_pred>,
+			                                   kmpl::front<minify<Func, shrinks + 1>>,
+			                                   kmpl::always<minify_result<Params, shrinks>>>>,
+			        typename gen::shrink<Params>::type>;
 		};
 
 		enum check_state { PASS, FAIL, RECURSE };
@@ -157,14 +145,13 @@ namespace mc {
 			                   call_generated<Func, typename Result::next_seed, Params...>,
 			                   Params...>;
 		};
-	}
 
-	template <template <typename...> class Func, unsigned tries, typename seed, typename... Params>
-	using check = typename detail::check_impl<detail::check_select(tries)>::template f<
-	        Func, tries + 1, tries,
-	        detail::call_generated_result<kmpl::list, seed, gen::value::list<>>, Params...>;
+		template <template <typename...> class Func, unsigned tries, typename seed,
+		          typename... Params>
+		using check = typename detail::check_impl<detail::check_select(tries)>::template f<
+		        Func, tries + 1, tries,
+		        detail::call_generated_result<kmpl::list, seed, gen::value::list<>>, Params...>;
 
-	namespace detail {
 		template <template <typename...> class Func, unsigned tries, typename... Params>
 		struct test {};
 
@@ -267,7 +254,8 @@ namespace mc {
 		                             const Tests... tests)
 		        -> decltype(test_all_func(
 		                push_test_result(
-		                        state, check<Func, tries, typename State::next_seed, Params...>{}),
+		                        state,
+		                        detail::check<Func, tries, typename State::next_seed, Params...>{}),
 		                tests...)) {
 			return test_all_func(
 			        push_test_result(state,

@@ -135,5 +135,10 @@ namespace mc {
 			constexpr static bool value =
 			        kvasir::mpl::call<kvasir::mpl::all<kvasir::mpl::identity>, Ts...>::value;
 		};
+
+		template <typename... Ts>
+		struct none {
+			constexpr static bool value = kvasir::mpl::call<kvasir::mpl::all<kvasir::mpl::invert<>>, Ts...>::value;
+		};
 	}
 }

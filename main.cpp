@@ -4,7 +4,6 @@
 //          http://www.boost.org/LICENSE_1_0.txt)
 
 #include <iostream>
-#include <type_traits>
 
 #include "src/metacheck.hpp"
 
@@ -31,6 +30,11 @@ using reverse = typename reverse_impl<L, typename create_empty<L>::f>::f;
 
 template <typename L>
 using reverse_test = std::is_same<L, reverse<reverse<L>>>;
+template <typename L>
+using faulty_reverse_test = std::is_same<L, reverse<reverse<L>>>;
+
+template <typename L>
+using reverse_meta_test = mc::mpl::all<reverse_test<L>, mc::mpl::none<faulty_reverse_test<L>>>;
 
 int main() {
 	std::cout << mc::test_all(
