@@ -12,10 +12,12 @@
 
 #ifdef __GNUG__
 #include <cxxabi.h>
+
 #endif
 
 namespace mc {
 #ifdef __GNUG__
+
 	template <typename T>
 	struct type_name {
 		operator std::string() const {
@@ -71,6 +73,7 @@ namespace mc {
 
 	template <typename List>
 	struct print_all_list;
+
 	template <template <typename...> class L, typename... Ts>
 	struct print_all_list<L<Ts...>> {
 		template <typename Ostream>
@@ -138,7 +141,161 @@ namespace mc {
 
 		template <typename... Ts>
 		struct none {
-			constexpr static bool value = kvasir::mpl::call<kvasir::mpl::all<kvasir::mpl::invert<>>, Ts...>::value;
+			constexpr static bool value =
+			        kvasir::mpl::call<kvasir::mpl::all<kvasir::mpl::invert<>>, Ts...>::value;
+		};
+
+		namespace detail {
+			constexpr unsigned fold_transform_select(unsigned n) {
+				return /*n >= 16 ? 16 : n >= 8 ? 8 : n >= 4 ? 4 : n >= 2 ? 2 : */ n >= 1 ? 1 : 0;
+			}
+
+			template <unsigned>
+			struct fold_transform_impl;
+
+			template <>
+			struct fold_transform_impl<0> {
+				template <template <typename...> class F, typename State, typename... Ts>
+				struct f {
+					using type  = kvasir::mpl::detail::rlist_tail_of8;
+					using state = State;
+				};
+			};
+
+			template <>
+			struct fold_transform_impl<1> {
+				template <template <typename...> class F, typename State, typename T0,
+				          typename... Ts>
+				struct f {
+					using r0  = F<State, T0>;
+					using res = typename fold_transform_impl<fold_transform_select(
+					        sizeof...(Ts))>::template f<F, typename r0::state, Ts...>;
+
+					using state = typename res::state;
+					using type  = kvasir::mpl::detail::rlist<kvasir::mpl::list<typename r0::type>,
+					                                        typename res::type>;
+				};
+			};
+
+			template <>
+			struct fold_transform_impl<2> {
+				template <template <typename...> class F, typename State, typename T0, typename T1,
+				          typename... Ts>
+				struct f {
+					using r0  = F<State, T0>;
+					using r1  = F<typename r0::state, T1>;
+					using res = typename fold_transform_impl<fold_transform_select(
+					        sizeof...(Ts))>::template f<F, typename r1::state, Ts...>;
+
+					using state = typename res::state;
+					using type  = kvasir::mpl::detail::rlist<
+					        kvasir::mpl::list<typename r0::type, typename r1::type>,
+					        typename res::type>;
+				};
+			};
+
+			template <>
+			struct fold_transform_impl<4> {
+				template <template <typename...> class F, typename State, typename T0, typename T1,
+				          typename T2, typename T3, typename... Ts>
+				struct f {
+					using r0  = F<State, T0>;
+					using r1  = F<typename r0::state, T1>;
+					using r2  = F<typename r1::state, T2>;
+					using r3  = F<typename r2::state, T3>;
+					using res = typename fold_transform_impl<fold_transform_select(
+					        sizeof...(Ts))>::template f<F, typename r3::state, Ts...>;
+
+					using state = typename res::state;
+					using type  = kvasir::mpl::detail::rlist<
+					        kvasir::mpl::list<typename r0::type, typename r1::type,
+					                          typename r2::type, typename r3::type>,
+					        typename res::type>;
+				};
+			};
+
+			template <>
+			struct fold_transform_impl<8> {
+				template <template <typename...> class F, typename State, typename T0, typename T1,
+				          typename T2, typename T3, typename T4, typename T5, typename T6,
+				          typename T7, typename... Ts>
+				struct f {
+					using r0  = F<State, T0>;
+					using r1  = F<typename r0::state, T1>;
+					using r2  = F<typename r1::state, T2>;
+					using r3  = F<typename r2::state, T3>;
+					using r4  = F<typename r3::state, T4>;
+					using r5  = F<typename r4::state, T5>;
+					using r6  = F<typename r5::state, T6>;
+					using r7  = F<typename r6::state, T7>;
+					using res = typename fold_transform_impl<fold_transform_select(
+					        sizeof...(Ts))>::template f<F, typename r7::state, Ts...>;
+
+					using state = typename res::state;
+					using type  = kvasir::mpl::detail::rlist<
+					        kvasir::mpl::list<typename r0::type, typename r1::type,
+					                          typename r2::type, typename r3::type,
+					                          typename r4::type, typename r5::type,
+					                          typename r6::type, typename r7::type>,
+					        typename res::type>;
+				};
+			};
+
+			template <>
+			struct fold_transform_impl<16> {
+				template <template <typename...> class F, typename State, typename T0, typename T1,
+				          typename T2, typename T3, typename T4, typename T5, typename T6,
+				          typename T7, typename T8, typename T9, typename T10, typename T11,
+				          typename T12, typename T13, typename T14, typename T15, typename... Ts>
+				struct f {
+					using r0  = F<State, T0>;
+					using r1  = F<typename r0::state, T1>;
+					using r2  = F<typename r1::state, T2>;
+					using r3  = F<typename r2::state, T3>;
+					using r4  = F<typename r3::state, T4>;
+					using r5  = F<typename r4::state, T5>;
+					using r6  = F<typename r5::state, T6>;
+					using r7  = F<typename r6::state, T7>;
+					using r8  = F<typename r7::state, T8>;
+					using r9  = F<typename r8::state, T9>;
+					using r10 = F<typename r9::state, T10>;
+					using r11 = F<typename r10::state, T11>;
+					using r12 = F<typename r11::state, T12>;
+					using r13 = F<typename r12::state, T13>;
+					using r14 = F<typename r13::state, T14>;
+					using r15 = F<typename r14::state, T15>;
+					using res = typename fold_transform_impl<fold_transform_select(
+					        sizeof...(Ts))>::template f<F, typename r15::state, Ts...>;
+
+					using state = typename res::state;
+					using type  = kvasir::mpl::detail::rlist<
+					        kvasir::mpl::list<
+					                typename r0::type, typename r1::type, typename r2::type,
+					                typename r3::type, typename r4::type, typename r5::type,
+					                typename r6::type, typename r7::type, typename r8::type,
+					                typename r9::type, typename r10::type, typename r11::type,
+					                typename r12::type, typename r13::type, typename r14::type,
+					                typename r15::type>,
+					        typename res::type>;
+				};
+			};
+		}
+
+		template <typename State, typename F, typename TC, typename C>
+		struct fold_transform {
+			template <typename... Ts>
+			struct impl {
+				using res = typename detail::fold_transform_impl<detail::fold_transform_select(
+				        sizeof...(Ts))>::template f<F::template f, State, Ts...>;
+
+				using f =
+				        kvasir::mpl::call<C, typename res::state,
+				                          kvasir::mpl::call<kvasir::mpl::detail::recursive_join<TC>,
+				                                            typename res::type>>;
+			};
+
+			template <typename... Ts>
+			using f = typename impl<Ts...>::f;
 		};
 	}
 }

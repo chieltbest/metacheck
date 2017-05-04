@@ -108,23 +108,17 @@ namespace mc {
 		};
 
 		namespace detail {
-			template <typename State, typename Result>
-			using gen_func_impl = detail::gen_result<
-			        typename Result::next_seed,
-			        mpl::push_front<typename Result::type, typename State::type>>;
-			template <typename State, typename T>
-			using gen_func =
-			        gen_func_impl<State, typename T::template generate<typename State::next_seed>>;
-
-			struct gen_make_result {
-				template <typename Result>
-				using f = gen_result<typename Result::next_seed, mpl::call<typename Result::type>>;
+			template <typename Seed, typename Elem>
+			struct gen_func {
+				using gen_result = typename Elem::template generate<Seed>;
+				using state      = typename gen_result::next_seed;
+				using type       = typename gen_result::type;
 			};
 
 			template <typename seed, template <typename...> class ResultList>
 			using generate_all =
-			        mpl::push_front<detail::gen_result<seed, mpl::cfe<ResultList>>,
-			                        mpl::fold_right<mpl::cfe<gen_func>, gen_make_result>>;
+			        mc::mpl::fold_transform<seed, mpl::cfe<gen_func>, mpl::cfe<ResultList>,
+			                                mpl::cfe<gen_result>>;
 		}
 
 		template <typename... Ts>

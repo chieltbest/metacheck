@@ -24,7 +24,7 @@ namespace mc {
 	};
 
 #ifdef METACHECK_RANDOM
-	using random_seed = seed_state<(METACHECK_RANDOM)>;
+	using random_seed = seed_state<uint64_t(METACHECK_RANDOM)>;
 #else
 	// initialize the seed with the hashed time for randomness sake
 	using random_seed =

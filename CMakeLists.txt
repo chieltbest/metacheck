@@ -14,3 +14,8 @@ add_custom_command(OUTPUT src/random.hpp
 set(SOURCE_FILES main.cpp src/random.hpp)
 add_executable(metacheck_test ${SOURCE_FILES})
 target_link_libraries(metacheck_test kvasir_mpl)
+
+option(METACHECK_TEST_RANDOM 0)
+if (METACHECK_TEST_RANDOM)
+	target_compile_definitions(metacheck_test PRIVATE -DMETACHECK_RANDOM=${METACHECK_TEST_RANDOM})
+endif ()
