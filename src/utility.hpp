@@ -33,7 +33,12 @@ namespace mc {
 	struct func_name {
 		operator std::string() const {
 			std::string name{type_name<func_name<F>>{}};
-			name.erase(0, 14); // remove "mc::func_name<"
+			std::size_t pos = name.rfind("::");
+			if (pos != name.npos) {
+				name.erase(0, pos + 2);
+			} else {
+				name.erase(0, 14); // remove "mc::func_name<"
+			}
 			name.pop_back(); // remove trailing '>'
 			return name;
 		}
