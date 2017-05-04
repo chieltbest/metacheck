@@ -236,7 +236,7 @@ namespace mc {
 
 			using type = mpl::call<
 			        mpl::join<>, mpl::list<value::list_of<>>,
-			        mpl::call<mpl::fork<mpl::listify, mpl::drop<mpl::uint_<sizeof...(Ts) / 2>,
+			        mpl::call<mpl::fork<mpl::listify, mpl::drop<mpl::uint_<(sizeof...(Ts) + 1) / 2>,
 			                                                    mpl::cfe<value::list_of>>,
 			                            mpl::take<mpl::uint_<sizeof...(Ts) / 2>,
 			                                      mpl::cfe<value::list_of>>>,
