@@ -303,4 +303,18 @@ namespace mc {
 			using f = typename impl<Ts...>::f;
 		};
 	}
+
+	/// standard function properties that can be tested against
+	namespace prop {
+		template <template <typename...> class F, template <typename...> Join,
+		          template <typename...> class Comb, typename L1, typename L2>
+		using distributive = mpl::equal<F<Join<L1, L2>>, Comb<F<L1>, F<L2>>>;
+
+		template <template <typename...> class F, typename L1, typename L2>
+		using commutative = mpl::equal<F<L1, L2>, F<L2, L1>>;
+
+		template <template <typename...> class F1,
+			template<typename...> class F2, typename L>
+		using associative = mpl::equal<F1<F2<L>>, F2<F1<L>>>;
+	}
 }
