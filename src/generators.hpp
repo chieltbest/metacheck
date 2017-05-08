@@ -109,16 +109,24 @@ namespace mc {
 
 		namespace detail {
 			template <typename Seed, typename Elem>
-			struct gen_func {
-				using gen_result = typename Elem::template generate<Seed>;
-				using state      = typename gen_result::next_seed;
-				using type       = typename gen_result::type;
-			};
+			using gen_func = typename Elem::template generate<typename Seed::next_seed>;
+
+			template <typename T>
+			using get_type = typename T::type;
+
+			template <typename T>
+			using get_seed = typename T::next_seed;
 
 			template <typename seed, template <typename...> class ResultList>
-			using generate_all =
-			        mc::mpl::fold_transform<seed, mpl::cfe<gen_func>, mpl::cfe<ResultList>,
-			                                mpl::cfe<gen_result>>;
+			using generate_all = mc::mpl::fold_transform<
+			        gen_result<seed, void>, mpl::cfe<gen_func>,
+			        mpl::fork<mpl::cfe<gen_result>,
+			                  mpl::fork_front<mpl::size<mpl::push_back<
+			                                          mpl::uint_<1>, mpl::minus<mpl::push_back<
+			                                                                 mpl::cfe<get_seed>,
+			                                                                 mpl::cfe<mpl::at>>>>>,
+			                                  mpl::cfe<mpl::call>>,
+			                  mpl::transform<mpl::cfe<get_type>, mpl::cfe<ResultList>>>>;
 		}
 
 		template <typename... Ts>
@@ -147,10 +155,18 @@ namespace mc {
 			struct inconstructible {
 				// no standard constructor
 				constexpr inconstructible() = delete;
+				// no standard destructor
+				~inconstructible() = delete;
+
 				// no copy constructor
 				constexpr inconstructible(inconstructible &) = delete;
 				// no move constructor
 				constexpr inconstructible(inconstructible &&) = delete;
+
+				// no copy assignment
+				constexpr void operator=(inconstructible &) = delete;
+				// no move assignment
+				constexpr void operator=(inconstructible &&) = delete;
 			};
 		}
 

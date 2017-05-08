@@ -152,7 +152,9 @@ namespace mc {
 
 		namespace detail {
 			constexpr unsigned fold_transform_select(unsigned n) {
-				return /*n >= 16 ? 16 : n >= 8 ? 8 : n >= 4 ? 4 : n >= 2 ? 2 : */ n >= 1 ? 1 : 0;
+				return n >= 32 ? 32 : n >= 16 ? 16 : n >= 8 ? 8 : n >= 4 ? 4 : n >= 2 ? 2 : n >= 1 ?
+				                                                                        1 :
+				                                                                        0;
 			}
 
 			template <unsigned>
@@ -162,8 +164,7 @@ namespace mc {
 			struct fold_transform_impl<0> {
 				template <template <typename...> class F, typename State, typename... Ts>
 				struct f {
-					using type  = kvasir::mpl::detail::rlist_tail_of8;
-					using state = State;
+					using type = kvasir::mpl::detail::rlist_tail_of8;
 				};
 			};
 
@@ -172,13 +173,12 @@ namespace mc {
 				template <template <typename...> class F, typename State, typename T0,
 				          typename... Ts>
 				struct f {
-					using r0  = F<State, T0>;
-					using res = typename fold_transform_impl<fold_transform_select(
-					        sizeof...(Ts))>::template f<F, typename r0::state, Ts...>;
+					using r0 = F<State, T0>;
 
-					using state = typename res::state;
-					using type  = kvasir::mpl::detail::rlist<kvasir::mpl::list<typename r0::type>,
-					                                        typename res::type>;
+					using type = kvasir::mpl::detail::rlist<
+					        kvasir::mpl::list<r0>,
+					        typename fold_transform_impl<fold_transform_select(
+					                sizeof...(Ts))>::template f<F, r0, Ts...>::type>;
 				};
 			};
 
@@ -187,15 +187,13 @@ namespace mc {
 				template <template <typename...> class F, typename State, typename T0, typename T1,
 				          typename... Ts>
 				struct f {
-					using r0  = F<State, T0>;
-					using r1  = F<typename r0::state, T1>;
-					using res = typename fold_transform_impl<fold_transform_select(
-					        sizeof...(Ts))>::template f<F, typename r1::state, Ts...>;
+					using r0 = F<State, T0>;
+					using r1 = F<r0, T1>;
 
-					using state = typename res::state;
-					using type  = kvasir::mpl::detail::rlist<
-					        kvasir::mpl::list<typename r0::type, typename r1::type>,
-					        typename res::type>;
+					using type = kvasir::mpl::detail::rlist<
+					        kvasir::mpl::list<r0, r1>,
+					        typename fold_transform_impl<fold_transform_select(
+					                sizeof...(Ts))>::template f<F, r1, Ts...>::type>;
 				};
 			};
 
@@ -204,18 +202,15 @@ namespace mc {
 				template <template <typename...> class F, typename State, typename T0, typename T1,
 				          typename T2, typename T3, typename... Ts>
 				struct f {
-					using r0  = F<State, T0>;
-					using r1  = F<typename r0::state, T1>;
-					using r2  = F<typename r1::state, T2>;
-					using r3  = F<typename r2::state, T3>;
-					using res = typename fold_transform_impl<fold_transform_select(
-					        sizeof...(Ts))>::template f<F, typename r3::state, Ts...>;
+					using r0 = F<State, T0>;
+					using r1 = F<r0, T1>;
+					using r2 = F<r1, T2>;
+					using r3 = F<r2, T3>;
 
-					using state = typename res::state;
-					using type  = kvasir::mpl::detail::rlist<
-					        kvasir::mpl::list<typename r0::type, typename r1::type,
-					                          typename r2::type, typename r3::type>,
-					        typename res::type>;
+					using type = kvasir::mpl::detail::rlist<
+					        kvasir::mpl::list<r0, r1, r2, r3>,
+					        typename fold_transform_impl<fold_transform_select(
+					                sizeof...(Ts))>::template f<F, r3, Ts...>::type>;
 				};
 			};
 
@@ -225,24 +220,19 @@ namespace mc {
 				          typename T2, typename T3, typename T4, typename T5, typename T6,
 				          typename T7, typename... Ts>
 				struct f {
-					using r0  = F<State, T0>;
-					using r1  = F<typename r0::state, T1>;
-					using r2  = F<typename r1::state, T2>;
-					using r3  = F<typename r2::state, T3>;
-					using r4  = F<typename r3::state, T4>;
-					using r5  = F<typename r4::state, T5>;
-					using r6  = F<typename r5::state, T6>;
-					using r7  = F<typename r6::state, T7>;
-					using res = typename fold_transform_impl<fold_transform_select(
-					        sizeof...(Ts))>::template f<F, typename r7::state, Ts...>;
+					using r0 = F<State, T0>;
+					using r1 = F<r0, T1>;
+					using r2 = F<r1, T2>;
+					using r3 = F<r2, T3>;
+					using r4 = F<r3, T4>;
+					using r5 = F<r4, T5>;
+					using r6 = F<r5, T6>;
+					using r7 = F<r6, T7>;
 
-					using state = typename res::state;
-					using type  = kvasir::mpl::detail::rlist<
-					        kvasir::mpl::list<typename r0::type, typename r1::type,
-					                          typename r2::type, typename r3::type,
-					                          typename r4::type, typename r5::type,
-					                          typename r6::type, typename r7::type>,
-					        typename res::type>;
+					using type = kvasir::mpl::detail::rlist<
+					        kvasir::mpl::list<r0, r1, r2, r3, r4, r5, r6, r7>,
+					        typename fold_transform_impl<fold_transform_select(
+					                sizeof...(Ts))>::template f<F, r7, Ts...>::type>;
 				};
 			};
 
@@ -254,67 +244,104 @@ namespace mc {
 				          typename T12, typename T13, typename T14, typename T15, typename... Ts>
 				struct f {
 					using r0  = F<State, T0>;
-					using r1  = F<typename r0::state, T1>;
-					using r2  = F<typename r1::state, T2>;
-					using r3  = F<typename r2::state, T3>;
-					using r4  = F<typename r3::state, T4>;
-					using r5  = F<typename r4::state, T5>;
-					using r6  = F<typename r5::state, T6>;
-					using r7  = F<typename r6::state, T7>;
-					using r8  = F<typename r7::state, T8>;
-					using r9  = F<typename r8::state, T9>;
-					using r10 = F<typename r9::state, T10>;
-					using r11 = F<typename r10::state, T11>;
-					using r12 = F<typename r11::state, T12>;
-					using r13 = F<typename r12::state, T13>;
-					using r14 = F<typename r13::state, T14>;
-					using r15 = F<typename r14::state, T15>;
-					using res = typename fold_transform_impl<fold_transform_select(
-					        sizeof...(Ts))>::template f<F, typename r15::state, Ts...>;
+					using r1  = F<r0, T1>;
+					using r2  = F<r1, T2>;
+					using r3  = F<r2, T3>;
+					using r4  = F<r3, T4>;
+					using r5  = F<r4, T5>;
+					using r6  = F<r5, T6>;
+					using r7  = F<r6, T7>;
+					using r8  = F<r7, T8>;
+					using r9  = F<r8, T9>;
+					using r10 = F<r9, T10>;
+					using r11 = F<r10, T11>;
+					using r12 = F<r11, T12>;
+					using r13 = F<r12, T13>;
+					using r14 = F<r13, T14>;
+					using r15 = F<r14, T15>;
 
-					using state = typename res::state;
-					using type  = kvasir::mpl::detail::rlist<
-					        kvasir::mpl::list<
-					                typename r0::type, typename r1::type, typename r2::type,
-					                typename r3::type, typename r4::type, typename r5::type,
-					                typename r6::type, typename r7::type, typename r8::type,
-					                typename r9::type, typename r10::type, typename r11::type,
-					                typename r12::type, typename r13::type, typename r14::type,
-					                typename r15::type>,
-					        typename res::type>;
+					using type = kvasir::mpl::detail::rlist<
+					        kvasir::mpl::list<r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12,
+					                          r13, r14, r15>,
+					        typename fold_transform_impl<fold_transform_select(
+					                sizeof...(Ts))>::template f<F, r15, Ts...>::type>;
+				};
+			};
+
+			template <>
+			struct fold_transform_impl<32> {
+				template <template <typename...> class F, typename State, typename T0, typename T1,
+				          typename T2, typename T3, typename T4, typename T5, typename T6,
+				          typename T7, typename T8, typename T9, typename T10, typename T11,
+				          typename T12, typename T13, typename T14, typename T15, typename T16,
+				          typename T17, typename T18, typename T19, typename T20, typename T21,
+				          typename T22, typename T23, typename T24, typename T25, typename T26,
+				          typename T27, typename T28, typename T29, typename T30, typename T31,
+				          typename... Ts>
+				struct f {
+					using r0  = F<State, T0>;
+					using r1  = F<r0, T1>;
+					using r2  = F<r1, T2>;
+					using r3  = F<r2, T3>;
+					using r4  = F<r3, T4>;
+					using r5  = F<r4, T5>;
+					using r6  = F<r5, T6>;
+					using r7  = F<r6, T7>;
+					using r8  = F<r7, T8>;
+					using r9  = F<r8, T9>;
+					using r10 = F<r9, T10>;
+					using r11 = F<r10, T11>;
+					using r12 = F<r11, T12>;
+					using r13 = F<r12, T13>;
+					using r14 = F<r13, T14>;
+					using r15 = F<r14, T15>;
+					using r16 = F<r15, T16>;
+					using r17 = F<r16, T17>;
+					using r18 = F<r17, T18>;
+					using r19 = F<r18, T19>;
+					using r20 = F<r19, T20>;
+					using r21 = F<r20, T21>;
+					using r22 = F<r21, T22>;
+					using r23 = F<r22, T23>;
+					using r24 = F<r23, T24>;
+					using r25 = F<r24, T25>;
+					using r26 = F<r25, T26>;
+					using r27 = F<r26, T27>;
+					using r28 = F<r27, T28>;
+					using r29 = F<r28, T29>;
+					using r30 = F<r29, T30>;
+					using r31 = F<r30, T31>;
+
+					using type = kvasir::mpl::detail::rlist<
+					        kvasir::mpl::list<r0, r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12,
+					                          r13, r14, r15, r16, r17, r18, r19, r20, r21, r22, r23,
+					                          r24, r25, r26, r27, r28, r29, r30, r31>,
+					        typename fold_transform_impl<fold_transform_select(
+					                sizeof...(Ts))>::template f<F, r31, Ts...>::type>;
 				};
 			};
 		}
 
-		template <typename State, typename F, typename TC, typename C>
+		template <typename State, typename F, typename C>
 		struct fold_transform {
 			template <typename... Ts>
-			struct impl {
-				using res = typename detail::fold_transform_impl<detail::fold_transform_select(
-				        sizeof...(Ts))>::template f<F::template f, State, Ts...>;
-
-				using f =
-				        kvasir::mpl::call<C, typename res::state,
-				                          kvasir::mpl::call<kvasir::mpl::detail::recursive_join<TC>,
-				                                            typename res::type>>;
-			};
-
-			template <typename... Ts>
-			using f = typename impl<Ts...>::f;
+			using f = kvasir::mpl::call<
+			        kvasir::mpl::detail::recursive_join<C>,
+			        typename detail::fold_transform_impl<detail::fold_transform_select(
+			                sizeof...(Ts))>::template f<F::template f, State, Ts...>::type>;
 		};
 	}
 
 	/// standard function properties that can be tested against
 	namespace prop {
-		template <template <typename...> class F, template <typename...> Join,
+		template <template <typename...> class F, template <typename...> class Join,
 		          template <typename...> class Comb, typename L1, typename L2>
 		using distributive = mpl::equal<F<Join<L1, L2>>, Comb<F<L1>, F<L2>>>;
 
 		template <template <typename...> class F, typename L1, typename L2>
 		using commutative = mpl::equal<F<L1, L2>, F<L2, L1>>;
 
-		template <template <typename...> class F1,
-			template<typename...> class F2, typename L>
+		template <template <typename...> class F1, template <typename...> class F2, typename L>
 		using associative = mpl::equal<F1<F2<L>>, F2<F1<L>>>;
 	}
 }
