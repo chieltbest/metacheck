@@ -89,26 +89,22 @@ namespace mc {
 	};
 
 	namespace mpl {
-		template <unsigned N>
-		struct make_uint_sequence_impl {
-			template <typename C, typename... Ts>
-			using f = typename make_uint_sequence_impl<N - 1>::template f<
-			        C, kvasir::mpl::uint_<N - 1>, Ts...>;
-		};
-		template <>
-		struct make_uint_sequence_impl<0> {
-			template <typename C, typename... Ts>
-			using f = kvasir::mpl::call<C, Ts...>;
+		template <typename T>
+		struct make_uint_sequence_impl;
+
+		template <typename T, T... Ns>
+		struct make_uint_sequence_impl<std::integer_sequence<T, Ns...>> {
+			template <typename C>
+			using f = kvasir::mpl::call<C, kvasir::mpl::uint_<Ns>...>;
 		};
 
 		template <typename C, typename... Ts>
-		using uint_sequence_for = typename make_uint_sequence_impl<sizeof...(Ts)>::template f<C>;
-
-		template <unsigned N, typename C>
-		using uint_sequence = typename make_uint_sequence_impl<N>::template f<C>;
+		using uint_sequence_for =
+		        typename make_uint_sequence_impl<std::index_sequence_for<Ts...>>::template f<C>;
 
 		template <unsigned N, typename T, typename C>
-		using repeat = uint_sequence<N, kvasir::mpl::transform<kvasir::mpl::always<T>, C>>;
+		using repeat = kvasir::mpl::call<kvasir::mpl::make_int_sequence<kvasir::mpl::always<T>, C>,
+		                                 kvasir::mpl::uint_<N>>;
 
 		template <typename...>
 		constexpr bool always_false = false;
@@ -131,10 +127,28 @@ namespace mc {
 
 		// utility functions for convenience within tests
 
+		namespace detail {
+			// sfinae test for value
+			template <typename A, typename B, bool r = A::value == B::value>
+			constexpr bool equal_value(int) {
+				return r;
+			};
+
+			template <typename, typename>
+			constexpr bool equal_value(bool) {
+				return false;
+			}
+		}
+
 		/// both values must be equal, otherwise the types are returned
 		template <typename A, typename B>
 		struct equal {
-			constexpr static bool value = A::value == B::value;
+			constexpr static bool value = detail::equal_value<A, B>(0);
+		};
+
+		template <typename A>
+		struct equal<A, A> {
+			constexpr static bool value = true;
 		};
 
 		/// function where all parameters must be true, if not all the types will be returned
@@ -152,9 +166,9 @@ namespace mc {
 
 		namespace detail {
 			constexpr unsigned fold_transform_select(unsigned n) {
-				return n >= 32 ? 32 : n >= 16 ? 16 : n >= 8 ? 8 : n >= 4 ? 4 : n >= 2 ? 2 : n >= 1 ?
-				                                                                        1 :
-				                                                                        0;
+				return n >= 32 ?
+				               32 :
+				               n >= 16 ? 16 : n >= 8 ? 8 : n >= 4 ? 4 : n >= 2 ? 2 : n >= 1 ? 1 : 0;
 			}
 
 			template <unsigned>
@@ -334,13 +348,16 @@ namespace mc {
 
 	/// standard function properties that can be tested against
 	namespace prop {
+		/// split and combined list calls give equal results
 		template <template <typename...> class F, template <typename...> class Join,
 		          template <typename...> class Comb, typename L1, typename L2>
 		using distributive = mpl::equal<F<Join<L1, L2>>, Comb<F<L1>, F<L2>>>;
 
+		/// reversed arguments gives equal results
 		template <template <typename...> class F, typename L1, typename L2>
 		using commutative = mpl::equal<F<L1, L2>, F<L2, L1>>;
 
+		/// reversed function call sequence gives equal results
 		template <template <typename...> class F1, template <typename...> class F2, typename L>
 		using associative = mpl::equal<F1<F2<L>>, F2<F1<L>>>;
 	}

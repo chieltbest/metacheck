@@ -82,7 +82,7 @@ namespace mc {
 			        value::uint_<(((unsigned(seed{}) >> (typename seed::next{} % 32))
 			                       // random distribution weighted towards small values
 			                       % (max_num - (min_num))) +
-			                      (min_num + 1))>>;
+			                      (min_num))>>;
 		};
 
 		struct bool_ {
@@ -117,16 +117,22 @@ namespace mc {
 			template <typename T>
 			using get_seed = typename T::next_seed;
 
+			template <typename C>
+			struct get_last {
+				template <typename... Ts>
+				using f = mpl::call<mpl::at<mpl::uint_<(sizeof...(Ts) - 1)>, C>, Ts...>;
+			};
+
 			template <typename seed, template <typename...> class ResultList>
 			using generate_all = mc::mpl::fold_transform<
 			        gen_result<seed, void>, mpl::cfe<gen_func>,
-			        mpl::fork<mpl::cfe<gen_result>,
-			                  mpl::fork_front<mpl::size<mpl::push_back<
-			                                          mpl::uint_<1>, mpl::minus<mpl::push_back<
-			                                                                 mpl::cfe<get_seed>,
-			                                                                 mpl::cfe<mpl::at>>>>>,
-			                                  mpl::cfe<mpl::call>>,
-			                  mpl::transform<mpl::cfe<get_type>, mpl::cfe<ResultList>>>>;
+			        mpl::fork<
+			                // add the original seed to the front in case the list is empty
+			                mpl::push_front<gen_result<seed, void>,
+			                                // get the seed of the last generated element
+			                                get_last<mpl::cfe<get_seed>>>,
+			                mpl::transform<mpl::cfe<get_type>, mpl::cfe<ResultList>>,
+			                mpl::cfe<gen_result>>>;
 		}
 
 		template <typename... Ts>
@@ -227,10 +233,10 @@ namespace mc {
 				template <typename Idx>
 				struct replace {
 					template <typename Shrink>
-					using f = mpl::call<mpl::fork<mpl::join<ResultList>, mpl::take<Idx>,
-					                              mpl::always<mpl::list<Shrink>>,
-					                              mpl::drop<mpl::uint_<Idx::value + 1>>>,
-					                    Ts...>;
+					using f = mpl::call<
+					        mpl::fork<mpl::take<Idx>, mpl::always<mpl::list<Shrink>>,
+					                  mpl::drop<mpl::uint_<Idx::value + 1>>, mpl::join<ResultList>>,
+					        Ts...>;
 				};
 				template <typename Shrinks, typename Idx>
 				using f = mpl::call<mpl::unpack<mpl::transform<replace<Idx>>>, Shrinks>;
@@ -246,19 +252,20 @@ namespace mc {
 		template <typename... Ts>
 		struct shrink<value::list_of<Ts...>> {
 			template <typename N>
-			using erase = mpl::call<mpl::fork<mpl::join<mpl::cfe<value::list_of>>, mpl::take<N>,
-			                                  mpl::drop<mpl::uint_<N::value + 1>>>,
+			using erase = mpl::call<mpl::fork<mpl::take<N>, mpl::drop<mpl::uint_<N::value + 1>>,
+			                                  mpl::join<mpl::cfe<value::list_of>>>,
 			                        Ts...>;
 
-			using type = mpl::call<
-			        mpl::join<>, mpl::list<value::list_of<>>,
-			        mpl::call<mpl::fork<mpl::listify, mpl::drop<mpl::uint_<(sizeof...(Ts) + 1) / 2>,
-			                                                    mpl::cfe<value::list_of>>,
-			                            mpl::take<mpl::uint_<sizeof...(Ts) / 2>,
-			                                      mpl::cfe<value::list_of>>>,
-			                  Ts...>,
-			        mc::mpl::uint_sequence_for<mpl::transform<mpl::cfe<erase>>, Ts...>,
-			        detail::shrink_any<mpl::cfe<value::list_of>, Ts...>>;
+			using type =
+			        mpl::call<mpl::join<>, mpl::list<value::list_of<>>,
+			                  mpl::call<mpl::fork<mpl::drop<mpl::uint_<(sizeof...(Ts) + 1) / 2>,
+			                                                mpl::cfe<value::list_of>>,
+			                                      mpl::take<mpl::uint_<sizeof...(Ts) / 2>,
+			                                                mpl::cfe<value::list_of>>,
+			                                      mpl::listify>,
+			                            Ts...>,
+			                  mc::mpl::uint_sequence_for<mpl::transform<mpl::cfe<erase>>, Ts...>,
+			                  detail::shrink_any<mpl::cfe<value::list_of>, Ts...>>;
 		};
 		template <>
 		struct shrink<value::list_of<>> {

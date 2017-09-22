@@ -57,6 +57,7 @@ namespace mc {
 				return stream;
 			}
 		};
+
 		template <unsigned failnum, unsigned tries, unsigned shrinks, typename Result>
 		struct make_error;
 		template <unsigned failnum, unsigned tries, unsigned shrinks,
@@ -174,7 +175,7 @@ namespace mc {
 
 	template <typename... Tests>
 	constexpr detail::section<Tests...> section(const char *name, const Tests... tests) {
-		return {.name = name, .tests = std::forward_as_tuple(tests...)};
+		return {.name = name, .tests = std::make_tuple(tests...)};
 	}
 
 	namespace detail {
@@ -248,6 +249,7 @@ namespace mc {
 			return {std::tuple_cat(state.results, std::tuple<TestResult>{result}), state.name};
 		}
 
+		// test a single test
 		template <typename State, template <typename...> class Func, unsigned tries,
 		          typename... Params, typename... Tests>
 		constexpr auto test_all_func(const State state, const test<Func, tries, Params...> test,
@@ -288,6 +290,7 @@ namespace mc {
 			return test_all_tuple_impl(state, tests, std::index_sequence_for<Tests...>{});
 		};
 
+		// test all the items in a section
 		template <typename State, typename... SectionTests, typename... Tests>
 		constexpr auto test_all_func(const State state, const section<SectionTests...> section,
 		                             const Tests... tests)
@@ -305,6 +308,16 @@ namespace mc {
 			                                      section.tests)),
 			        tests...);
 		}
+
+		// add a previously calculated result
+		template <typename State, typename Results, typename Seed, unsigned passed, unsigned failed,
+		          typename... Tests>
+		constexpr auto test_all_func(const State state,
+		                             const section_temp<Results, Seed, passed, failed> result,
+		                             const Tests... tests)
+		        -> decltype(test_all_func(push_section_result(state, result), tests...)) {
+			return test_all_func(push_section_result(state, result), tests...);
+		};
 
 		template <typename Result>
 		struct result_printer_impl {
@@ -340,6 +353,10 @@ namespace mc {
 			return result_printer_impl<Result>{.result = result};
 		}
 	}
+
+#define PRECALC_SECTION(SECTION)                                                            \
+	mc::detail::test_all_tuple(mc::detail::empty_section_result<FILE_RANDOM>(SECTION.name), \
+	                           SECTION.tests)
 
 	template <typename... Tests>
 	constexpr auto test_all(const Tests... tests) {

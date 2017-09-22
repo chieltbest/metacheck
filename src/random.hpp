@@ -4,8 +4,9 @@
 //          http://www.boost.org/LICENSE_1_0.txt)
 #pragma once
 
-namespace mc {
+#include <kvasir/mpl/mpl.hpp>
 
+namespace mc {
 	template <uint64_t cur_state>
 	struct seed_state {
 		constexpr static uint64_t state = cur_state;
@@ -33,4 +34,26 @@ namespace mc {
 	                               60) +
 	                              ((__TIME__[7] - '0') + (__TIME__[6] - '0') * 10)>{}>;
 #endif
+
+	namespace detail {
+		template <typename Seed, uint64_t i>
+		using encode_int
+		        // xor the int with the output of the current seed state, then get the next hash to
+		        // distribute the random bits
+		        = typename seed_state<Seed{} ^ i>::next;
+
+		constexpr uint64_t encode_string(uint64_t seed, const char *s, unsigned pos) {
+			return s[pos] == '\0' ? seed
+			                        // barrel shift left by 8 then xor with current char
+			                        :
+			                        encode_string((((seed & ~(1ull << 56)) << 8) |
+			                                       ((seed & (0xffull << 56)) >> 56)) ^
+			                                              s[pos],
+			                                      s, pos + 1);
+		}
+	}
+
+#define FILE_RANDOM         \
+	mc::detail::encode_int< \
+	        mc::seed_state<mc::detail::encode_string(mc::random_seed{}, __FILE__, 0)>, __LINE__>
 }
