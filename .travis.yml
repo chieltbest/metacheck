@@ -37,7 +37,7 @@ matrix:
         - llvm-toolchain-precise-3.5
         packages:
         - clang-3.5
-        - libstdc++6
+        - libstdc++6-dev
     env: TOOLSET=clang++-3.5
   - compiler: clang
     addons:
@@ -47,7 +47,7 @@ matrix:
         - llvm-toolchain-precise-3.6
         packages:
         - clang-3.6
-        - libstdc++6
+        - libstdc++6-dev
     env: TOOLSET=clang++-3.6
   - compiler: clang
     addons:
@@ -57,7 +57,7 @@ matrix:
         - llvm-toolchain-precise-3.7
         packages:
         - clang-3.7
-        - libstdc++6
+        - libstdc++6-dev
     env: TOOLSET=clang++-3.7
   - compiler: clang
     addons:
@@ -67,7 +67,7 @@ matrix:
         - llvm-toolchain-precise-3.8
         packages:
         - clang-3.8
-        - libstdc++6
+        - libstdc++6-dev
     env: TOOLSET=clang++-3.8
   - compiler: clang
     addons:
@@ -76,7 +76,7 @@ matrix:
         - llvm-toolchain-trusty-3.9
         packages:
         - clang-3.9
-        - libstdc++6
+        - libstdc++6-dev
     env: TOOLSET=clang++-3.9
   - compiler: clang
     addons:
@@ -85,7 +85,7 @@ matrix:
         - llvm-toolchain-trusty-4.0
         packages:
         - clang-4.0
-        - libstdc++6
+        - libstdc++6-dev
     env: TOOLSET=clang++-4.0
   - compiler: clang
     addons:
@@ -94,7 +94,7 @@ matrix:
         - llvm-toolchain-trusty-5.0
         packages:
         - clang-5.0
-        - libstdc++6
+        - libstdc++6-dev
     env: TOOLSET=clang++-5.0
 
   - os: osx
