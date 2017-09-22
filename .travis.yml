@@ -1,13 +1,5 @@
 language: cpp
 
-addons:
-  apt:
-    sources:
-      - george-edison55-precise-backports
-    packages:
-      - cmake-data
-      - cmake
-
 os: linux
 
 matrix:
@@ -85,18 +77,15 @@ matrix:
     addons:
       apt:
         sources:
-        - ubuntu-toolchain-r-test
-        - llvm-toolchain-precise-3.9
+        - llvm-toolchain-trusty-3.9
         packages:
-        - ubuntu-toolchain-r-test
         - clang-3.9
     env: TOOLSET=clang++-3.9
   - compiler: clang
     addons:
       apt:
         sources:
-        - ubuntu-toolchain-r-test
-        - llvm-toolchain-precise-4.0
+        - llvm-toolchain-trusty-4.0
         packages:
         - clang-4.0
     env: TOOLSET=clang++-4.0
@@ -104,8 +93,7 @@ matrix:
     addons:
       apt:
         sources:
-        - ubuntu-toolchain-r-test
-        - llvm-toolchain-precise-5.0
+        - llvm-toolchain-trusty-5.0
         packages:
         - clang-5.0
     env: TOOLSET=clang++-5.0
