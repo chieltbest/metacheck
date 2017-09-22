@@ -10,14 +10,6 @@ matrix:
         sources:
         - ubuntu-toolchain-r-test
         packages:
-        - g++-4.9
-    env: TOOLSET=g++-4.9
-  - compiler: gcc
-    addons:
-      apt:
-        sources:
-        - ubuntu-toolchain-r-test
-        packages:
         - g++-5
     env: TOOLSET=g++-5
   - compiler: gcc

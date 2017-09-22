@@ -5,6 +5,7 @@
 #pragma once
 
 #include <type_traits>
+#include <utility>
 #include <kvasir/mpl/mpl.hpp>
 
 #include <string>
@@ -92,15 +93,10 @@ namespace mc {
 		template <typename T>
 		struct make_uint_sequence_impl;
 
-		template <typename T, T... Ns>
-		struct make_uint_sequence_impl<std::integer_sequence<T, Ns...>> {
-			template <typename C>
-			using f = kvasir::mpl::call<C, kvasir::mpl::uint_<Ns>...>;
-		};
-
 		template <typename C, typename... Ts>
 		using uint_sequence_for =
-		        typename make_uint_sequence_impl<std::index_sequence_for<Ts...>>::template f<C>;
+		        kvasir::mpl::call<kvasir::mpl::make_int_sequence<kvasir::mpl::detail::make_uint, C>,
+		                          kvasir::mpl::uint_<sizeof...(Ts)>>;
 
 		template <unsigned N, typename T, typename C>
 		using repeat = kvasir::mpl::call<kvasir::mpl::make_int_sequence<kvasir::mpl::always<T>, C>,
