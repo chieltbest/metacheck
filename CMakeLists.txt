@@ -3,8 +3,8 @@ project(metacheck)
 
 add_subdirectory(mpl)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -ftemplate-depth=2048 -Wall
-	-ftemplate-backtrace-limit=0")
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -ftemplate-depth=2048 -Wall -ftemplate-backtrace-limit=0")
 
 # always rebuild anything that uses the random header
 add_custom_command(OUTPUT src/random.hpp
