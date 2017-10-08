@@ -95,7 +95,7 @@ namespace mc {
 
 		template <typename C, typename... Ts>
 		using uint_sequence_for =
-		        kvasir::mpl::call<kvasir::mpl::make_int_sequence<kvasir::mpl::detail::make_uint, C>,
+		        kvasir::mpl::call<kvasir::mpl::make_int_sequence<kvasir::mpl::identity, C>,
 		                          kvasir::mpl::uint_<sizeof...(Ts)>>;
 
 		template <unsigned N, typename T, typename C>
