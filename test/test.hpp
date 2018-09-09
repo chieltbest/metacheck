@@ -3,7 +3,7 @@
 //    (See accompanying file LICENSE.md or copy at
 //          http://www.boost.org/LICENSE_1_0.txt)
 
-#include "../src/precalc.hpp"
+#include "../src/metacheck.hpp"
 
 namespace mpl = kvasir::mpl;
 

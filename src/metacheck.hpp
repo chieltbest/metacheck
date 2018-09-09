@@ -367,6 +367,24 @@ namespace mc {
 			        tests...);
 		}
 
+		// section_base specific push section
+		template<typename State>
+		constexpr auto push_section_result(const State state,
+		                                   const section_base *result) -> section_temp<
+			decltype(std::tuple_cat(state.results, std::make_tuple(result))),
+			typename State::next_seed> {
+			return {.results = std::tuple_cat(state.results,
+			                                  std::make_tuple(result)), .name    = state.name};
+		}
+
+		// section_base specific test_all impl
+		template<typename State, typename... Tests>
+		constexpr auto test_all_func(const State state, const section_base *result,
+		                             const Tests... tests) -> decltype(test_all_func(
+			push_section_result(state, result), tests...)) {
+			return test_all_func(push_section_result(state, result), tests...);
+		};
+
 		template <typename Result>
 		struct result_printer_impl {
 			const Result result;
@@ -408,4 +426,9 @@ namespace mc {
 		        detail::test_all_func(detail::empty_section_result<random_seed>(""), tests...)
 		                .make_result_struct());
 	}
+
+#define PRECALC_SECTION(SECTION)                                                            \
+    mc::detail::test_all_tuple(mc::detail::empty_section_result<FILE_RANDOM>(SECTION.name), \
+                               SECTION.tests)                                               \
+            .make_result_struct()
 } // namespace mc
