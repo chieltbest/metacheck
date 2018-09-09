@@ -35,6 +35,8 @@ namespace mc {
 		using call_generated =
 		        call_generated_impl<Func, typename gen::list<Params...>::template generate<seed>>;
 
+		// virtual base class so that you can use multiple translation units
+
 		template <template <typename...> class FuncName, unsigned failnum, unsigned tries,
 		          unsigned shrinks, typename seed, typename... Params>
 		struct error {
@@ -55,6 +57,18 @@ namespace mc {
 				print_all(stream, "\n\t", std::string(type_name<Params>{})...) << std::endl;
 				stream << "[  FAILED  ] " << suite << name << " (0 ms)" << std::endl;
 				return stream;
+			}
+
+			constexpr unsigned num_tests() const {
+				return 1;
+			}
+
+			constexpr unsigned num_passed() const {
+				return 0;
+			}
+
+			constexpr unsigned num_failed() const {
+				return 1;
 			}
 		};
 
@@ -81,6 +95,18 @@ namespace mc {
 				stream << "[ RUN      ] " << suite << name << std::endl
 				       << "[       OK ] " << suite << name << " (0 ms)" << std::endl;
 				return stream;
+			}
+
+			constexpr unsigned num_tests() const {
+				return 1;
+			}
+
+			constexpr unsigned num_passed() const {
+				return 1;
+			}
+
+			constexpr unsigned num_failed() const {
+				return 0;
 			}
 		};
 
@@ -162,7 +188,7 @@ namespace mc {
 			const char *name; // pod type constructor
 			std::tuple<Tests...> tests;
 		};
-	}
+	} // namespace detail
 
 	/// a single test case testing a function
 	/// \tparam Func the function that is to be tested, should be convertible to bool, true if
@@ -179,60 +205,93 @@ namespace mc {
 	}
 
 	namespace detail {
-		template <typename Stream, typename Results, std::size_t... Ints>
-		auto &&print_all_tuple_impl(Stream &&stream, std::string section, const Results results,
-		                            const std::index_sequence<Ints...>) {
-			// return the last result from the print functions
-			return std::get<sizeof...(Ints)>(std::forward_as_tuple(
-			        stream, std::get<Ints>(results).print(stream, section)...));
+		struct section_base {
+			const char *name;
+
+			constexpr section_base(const char *name) : name{name} {};
+
+			virtual unsigned num_tests() const                                              = 0;
+			virtual unsigned num_failed() const                                             = 0;
+			virtual unsigned num_passed() const                                             = 0;
+			virtual std::ostream &print(std::ostream &stream, std::string &test_root) const = 0;
+		};
+
+		template <typename Result>
+		auto &&print_result(std::ostream &stream, std::string &section, Result &result) {
+			return deref(result).print(stream, section);
 		}
 
-		template <typename Stream, typename Results>
-		auto print_all_tuple(Stream &&stream, std::string section, const Results results)
+		template <typename Results, std::size_t... Ints>
+		auto &&print_all_tuple_impl(std::ostream &stream, std::string &section,
+		                            const Results results, const std::index_sequence<Ints...>) {
+			// return the last result from the print functions
+			return std::get<sizeof...(Ints)>(std::forward_as_tuple(
+			        stream, print_result(stream, section, std::get<Ints>(results))...));
+		}
+
+		template <typename Results>
+		auto print_all_tuple(std::ostream &stream, std::string section, const Results results)
 		        -> decltype(print_all_tuple_impl(
-		                std::forward<Stream>(stream), section, results,
+		                stream, section, results,
 		                std::make_index_sequence<std::tuple_size<Results>::value>{})) {
 			return print_all_tuple_impl(
-			        std::forward<Stream>(stream), section, results,
+			        stream, section, results,
 			        std::make_index_sequence<std::tuple_size<Results>::value>{});
 		};
 
 		template <typename Results>
-		struct section_result {
+		class section_result : public section_base {
+		public:
 			const Results results;
-			const char *name; // pod constructable
 
-			constexpr static auto num_tests = std::tuple_size<Results>::value;
+			constexpr section_result(const Results results, const char *name)
+			    : section_base{name}, results{results} {
+			}
 
-			template <typename Ostream>
-			auto &&print(Ostream &&stream, std::string &test_root) const {
+			//			constexpr static auto num_tests = std::tuple_size<Results>::value;
+			unsigned num_tests() const override {
+				return std::tuple_size<Results>::value;
+			}
+
+			unsigned num_passed() const override {
+				unsigned passed = 0;
+				foreach
+					<void>(results, [&](auto result) { passed += deref(result).num_passed(); });
+				return passed;
+			}
+			unsigned num_failed() const override {
+				unsigned failed = 0;
+				foreach
+					<void>(results, [&](auto result) { failed += deref(result).num_failed(); });
+				return failed;
+			}
+
+			std::ostream &print(std::ostream &stream, std::string &test_root) const override {
 				std::string new_root{test_root};
 				new_root.append(name).append(".");
 				// replace the root name with the current section for now
-				stream << "[----------] " << num_tests << " tests from " << name << std::endl;
+				stream << "[----------] " << num_tests() << " tests from " << name << std::endl;
 				print_all_tuple(stream, new_root, results);
-				stream << "[----------] " << num_tests << " tests from " << name << " (0 ms total)"
-				       << std::endl;
+				stream << "[----------] " << num_tests() << " tests from " << name
+				       << " (0 ms total)" << std::endl;
 				return stream;
 			}
 		};
 
-		template <typename Results, typename Seed, unsigned passed, unsigned failed>
+		template <typename Results, typename Seed>
 		struct section_temp {
 			const Results results;
 			const char *name;
 
 			using next_seed = Seed;
 
-			constexpr static auto num_passed = passed, num_failed = failed;
-
 			constexpr const section_result<Results> make_result_struct() const {
-				return {.results = results, .name = name};
+				return {results, name};
 			}
 		};
 
 		template <typename Seed>
-		constexpr section_temp<std::tuple<>, Seed, 0, 0> empty_section_result(const char *name) {
+		constexpr section_temp<std::tuple<>, Seed> empty_section_result(const char *name) {
 			return {.results = {}, .name = name};
 		}
 
@@ -242,10 +301,10 @@ namespace mc {
 		}
 
 		template <typename State, typename TestResult>
-		constexpr auto push_test_result(const State state, TestResult result) -> section_temp<
-		        decltype(std::tuple_cat(state.results, std::tuple<TestResult>{result})),
-		        typename TestResult::next_seed, State::num_passed + (TestResult::value ? 1 : 0),
-		        State::num_failed + (TestResult::value ? 0 : 1)> {
+		constexpr auto push_test_result(const State state, TestResult result)
+		        -> section_temp<decltype(std::tuple_cat(state.results,
+		                                                std::tuple<TestResult>{result})),
+		                        typename TestResult::next_seed> {
 			return {std::tuple_cat(state.results, std::tuple<TestResult>{result}), state.name};
 		}
 
@@ -266,15 +325,14 @@ namespace mc {
 		}
 
 		template <typename State, typename SectionResult>
-		constexpr auto
-		push_section_result(const State state, const SectionResult result) -> section_temp<
-		        decltype(std::tuple_cat(state.results,
-		                                std::make_tuple(result.make_result_struct()))),
-		        typename SectionResult::next_seed, State::num_passed + SectionResult::num_passed,
-		        State::num_failed + SectionResult::num_failed> {
+		constexpr auto push_section_result(const State state, const SectionResult result)
+		        -> section_temp<
+		                decltype(std::tuple_cat(state.results,
+		                                        std::make_tuple(result.make_result_struct()))),
+		                typename SectionResult::next_seed> {
 			return {.results = std::tuple_cat(state.results,
 			                                  std::make_tuple(result.make_result_struct())),
-			        .name = state.name};
+			        .name    = state.name};
 		}
 
 		template <typename State, typename... Tests, std::size_t... Ints>
@@ -309,41 +367,31 @@ namespace mc {
 			        tests...);
 		}
 
-		// add a previously calculated result
-		template <typename State, typename Results, typename Seed, unsigned passed, unsigned failed,
-		          typename... Tests>
-		constexpr auto test_all_func(const State state,
-		                             const section_temp<Results, Seed, passed, failed> result,
-		                             const Tests... tests)
-		        -> decltype(test_all_func(push_section_result(state, result), tests...)) {
-			return test_all_func(push_section_result(state, result), tests...);
-		};
-
 		template <typename Result>
 		struct result_printer_impl {
 			const Result result;
 
 			constexpr operator int() const {
-				return Result::num_failed == 0 ? 0 : 1;
+				return result.num_failed() == 0 ? 0 : 1;
 			}
 
-			template <typename Ostream>
-			friend auto &&operator<<(Ostream &&stream, const result_printer_impl<Result> lhs) {
+			friend std::ostream &operator<<(std::ostream &stream,
+			                                const result_printer_impl<Result> lhs) {
 				std::size_t num_suites = std::tuple_size<
 				                    std::remove_reference_t<decltype(result.results)>>::value,
-				            num_tests = Result::num_passed + Result::num_failed;
+				            num_tests = lhs.result.num_tests();
 
 				stream << "[==========] Running " << num_tests
 				       << (num_tests == 1 ? " test" : " tests") << " from " << num_suites
 				       << " test " << (num_suites == 1 ? "case." : "cases.") << std::endl
 				       << "Seed: " << random_seed::state << std::endl;
-				print_all_tuple(std::forward<Ostream>(stream), std::string(""), lhs.result.results);
+				print_all_tuple(stream, std::string(""), lhs.result.results);
 				stream << std::endl
 				       << "[----------] Global test environment tear-down" << std::endl
 				       << "[==========] " << num_tests << (num_tests == 1 ? " test" : " tests")
 				       << " from " << num_suites << " test " << (num_suites == 1 ? "case" : "cases")
 				       << " ran. (0 ms total)" << std::endl
-				       << "[  PASSED  ] " << Result::num_passed << " tests." << std::endl;
+				       << "[  PASSED  ] " << lhs.result.num_passed() << " tests." << std::endl;
 				return stream;
 			}
 		};
@@ -352,15 +400,12 @@ namespace mc {
 		constexpr auto result_printer(const Result &&result) {
 			return result_printer_impl<Result>{.result = result};
 		}
-	}
-
-#define PRECALC_SECTION(SECTION)                                                            \
-	mc::detail::test_all_tuple(mc::detail::empty_section_result<FILE_RANDOM>(SECTION.name), \
-	                           SECTION.tests)
+	} // namespace detail
 
 	template <typename... Tests>
 	constexpr auto test_all(const Tests... tests) {
 		return detail::result_printer(
-		        detail::test_all_func(detail::empty_section_result<random_seed>(""), tests...));
+		        detail::test_all_func(detail::empty_section_result<random_seed>(""), tests...)
+		                .make_result_struct());
 	}
-}
+} // namespace mc

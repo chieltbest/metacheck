@@ -51,7 +51,7 @@ namespace mc {
 			struct list_of {
 				using type = mpl::list<typename Ts::type...>;
 			};
-		}
+		} // namespace value
 
 		namespace detail {
 			template <typename seed, typename T>
@@ -60,7 +60,7 @@ namespace mc {
 
 				using type = T;
 			};
-		}
+		} // namespace detail
 
 		/// just use the value provided, do not shrink
 		template <typename T>
@@ -133,7 +133,7 @@ namespace mc {
 			                                get_last<mpl::cfe<get_seed>>>,
 			                mpl::transform<mpl::cfe<get_type>, mpl::cfe<ResultList>>,
 			                mpl::cfe<gen_result>>>;
-		}
+		} // namespace detail
 
 		template <typename... Ts>
 		struct list {
@@ -174,7 +174,7 @@ namespace mc {
 				// no move assignment
 				constexpr void operator=(inconstructible &&) = delete;
 			};
-		}
+		} // namespace detail
 
 		/// can literally be any type, everything is allowed
 		struct anything {
@@ -190,7 +190,7 @@ namespace mc {
 			        // anything can also be a list of anything, or a list of a list of anything
 			        list_of<anything, uint_<5>>>::template generate<seed>;
 		};
-	}
+	} // namespace gen
 
 	// value shrinking functions
 	namespace gen {
@@ -247,7 +247,7 @@ namespace mc {
 			        mpl::call<mpl::zip_with<any_shrinker<ResultList, Ts...>, mpl::join<>>,
 			                  mpl::list<typename shrink<Ts>::type...>,
 			                  mc::mpl::uint_sequence_for<mpl::listify, Ts...>>;
-		}
+		} // namespace detail
 
 		template <typename... Ts>
 		struct shrink<value::list_of<Ts...>> {
@@ -276,5 +276,5 @@ namespace mc {
 		struct shrink<value::list<Ts...>> {
 			using type = detail::shrink_any<mpl::cfe<value::list>, Ts...>;
 		};
-	}
-};
+	} // namespace gen
+}; // namespace mc

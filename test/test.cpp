@@ -3,11 +3,7 @@
 //    (See accompanying file LICENSE.md or copy at
 //          http://www.boost.org/LICENSE_1_0.txt)
 
-#include <iostream>
+#include "test.hpp"
 
-#include "test/test.hpp"
-
-int main() {
-	std::cout << mc::test_all(test_section, test_section_base);
-	return 0;
-}
+constexpr auto test_section_result                = PRECALC_SECTION(precalc_test_section);
+const mc::detail::section_base *test_section_base = &test_section_result;

@@ -51,9 +51,9 @@ namespace mc {
 			                                              s[pos],
 			                                      s, pos + 1);
 		}
-	}
+	} // namespace detail
 
 #define FILE_RANDOM         \
 	mc::detail::encode_int< \
 	        mc::seed_state<mc::detail::encode_string(mc::random_seed{}, __FILE__, 0)>, __LINE__>
-}
+} // namespace mc

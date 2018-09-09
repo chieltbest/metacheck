@@ -62,6 +62,41 @@ namespace mc {
 	};
 #endif
 
+	namespace detail {
+		template <typename Out>
+		struct foreach_impl {
+			template <typename List, typename Func, std::size_t... Ints>
+			Out operator()(List list, const std::index_sequence<Ints...>, Func func) {
+				return Out(func(std::get<Ints>(list))...);
+			}
+		};
+
+		template <>
+		struct foreach_impl<void> {
+			template <typename List, typename Func, std::size_t... Ints>
+			void operator()(List list, const std::index_sequence<Ints...>, Func func) {
+				int res[] = {0, (void(func(std::get<Ints>(list))), 0)...};
+				(void)res;
+			};
+		};
+	}; // namespace detail
+
+	template <typename Out, typename List, typename Func>
+	Out foreach (List list, Func func) {
+		return detail::foreach_impl<Out>{}(
+		        list, std::make_index_sequence<std::tuple_size<List>::value>{}, func);
+	}
+
+	template <typename T>
+	auto &deref(T &val) {
+		return val;
+	}
+
+	template <typename T>
+	auto &deref(T *val) {
+		return deref(*val);
+	}
+
 	// define function specification
 	template <typename Ostream, typename String, typename... Ts>
 	Ostream &&print_all(Ostream &&stream, String &&prepend, Ts &&... ts);
@@ -134,7 +169,7 @@ namespace mc {
 			constexpr bool equal_value(bool) {
 				return false;
 			}
-		}
+		} // namespace detail
 
 		/// both values must be equal, otherwise the types are returned
 		template <typename A, typename B>
@@ -330,7 +365,7 @@ namespace mc {
 					                sizeof...(Ts))>::template f<F, r31, Ts...>::type>;
 				};
 			};
-		}
+		} // namespace detail
 
 		template <typename State, typename F, typename C>
 		struct fold_transform {
@@ -340,7 +375,7 @@ namespace mc {
 			        typename detail::fold_transform_impl<detail::fold_transform_select(
 			                sizeof...(Ts))>::template f<F::template f, State, Ts...>::type>;
 		};
-	}
+	} // namespace mpl
 
 	/// standard function properties that can be tested against
 	namespace prop {
@@ -356,5 +391,5 @@ namespace mc {
 		/// reversed function call sequence gives equal results
 		template <template <typename...> class F1, template <typename...> class F2, typename L>
 		using associative = mpl::equal<F1<F2<L>>, F2<F1<L>>>;
-	}
-}
+	} // namespace prop
+} // namespace mc

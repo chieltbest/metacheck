@@ -3,7 +3,7 @@
 //    (See accompanying file LICENSE.md or copy at
 //          http://www.boost.org/LICENSE_1_0.txt)
 
-#include "../src/metacheck.hpp"
+#include "../src/precalc.hpp"
 
 namespace mpl = kvasir::mpl;
 
@@ -28,12 +28,19 @@ namespace testns {
 	using reverse = typename reverse_impl<L, typename create_empty<L>::f>::f;
 
 	template <typename L>
-	using reverse_test = std::is_same<L, reverse<reverse<L>>>;
-}
+	using reverse_test = std::is_same<L, reverse<L>>;
+} // namespace testns
 
-constexpr auto test_section =
-        mc::section("main",
+constexpr auto test_section = mc::section(
+        "main", mc::test<testns::reverse_test, // the function to test, should return a bool
+                         10, // the number of times to repeat the test
+                         // parameters to use in the test
+                         mc::gen::list_of<mc::gen::anything>>);
+
+constexpr auto precalc_test_section =
+        mc::section("precalc_main",
                     mc::test<testns::reverse_test, // the function to test, should return a bool
                              10, // the number of times to repeat the test
                              // parameters to use in the test
                              mc::gen::list_of<mc::gen::anything>>);
+extern const mc::detail::section_base *test_section_base;
