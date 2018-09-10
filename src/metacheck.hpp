@@ -248,9 +248,11 @@ namespace mc {
 			    : section_base{name}, results{results} {
 			}
 
-			//			constexpr static auto num_tests = std::tuple_size<Results>::value;
 			unsigned num_tests() const override {
-				return std::tuple_size<Results>::value;
+				unsigned num = 0;
+				foreach
+					<void>(results, [&](auto result) { num += deref(result).num_tests(); });
+				return num;
 			}
 
 			unsigned num_passed() const override {
@@ -368,20 +370,19 @@ namespace mc {
 		}
 
 		// section_base specific push section
-		template<typename State>
-		constexpr auto push_section_result(const State state,
-		                                   const section_base *result) -> section_temp<
-			decltype(std::tuple_cat(state.results, std::make_tuple(result))),
-			typename State::next_seed> {
-			return {.results = std::tuple_cat(state.results,
-			                                  std::make_tuple(result)), .name    = state.name};
+		template <typename State>
+		constexpr auto push_section_result(const State state, const section_base *result)
+		        -> section_temp<decltype(std::tuple_cat(state.results, std::make_tuple(result))),
+		                        typename State::next_seed> {
+			return {.results = std::tuple_cat(state.results, std::make_tuple(result)),
+			        .name    = state.name};
 		}
 
 		// section_base specific test_all impl
-		template<typename State, typename... Tests>
+		template <typename State, typename... Tests>
 		constexpr auto test_all_func(const State state, const section_base *result,
-		                             const Tests... tests) -> decltype(test_all_func(
-			push_section_result(state, result), tests...)) {
+		                             const Tests... tests)
+		        -> decltype(test_all_func(push_section_result(state, result), tests...)) {
 			return test_all_func(push_section_result(state, result), tests...);
 		};
 
@@ -428,7 +429,7 @@ namespace mc {
 	}
 
 #define PRECALC_SECTION(SECTION)                                                            \
-    mc::detail::test_all_tuple(mc::detail::empty_section_result<FILE_RANDOM>(SECTION.name), \
-                               SECTION.tests)                                               \
-            .make_result_struct()
+	mc::detail::test_all_tuple(mc::detail::empty_section_result<FILE_RANDOM>(SECTION.name), \
+	                           SECTION.tests)                                               \
+	        .make_result_struct()
 } // namespace mc
