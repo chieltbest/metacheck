@@ -5,5 +5,5 @@
 
 #include "test.hpp"
 
-constexpr auto test_section_result                = PRECALC_SECTION(precalc_test_section);
-const mc::detail::section_base *test_section_base = &test_section_result;
+const auto test_section_result         = mc::evaluate(mc::section("precalc", test));
+const mc::result *test_section_precalc = &test_section_result;

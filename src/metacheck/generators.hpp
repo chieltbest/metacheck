@@ -37,7 +37,7 @@ namespace mc {
 				using type = mpl::bool_<value>;
 			};
 
-			template <typename T, typename Seed, typename... Ts>
+			template <typename T, typename... Ts>
 			struct any {
 				using type = typename T::type;
 			};
@@ -91,22 +91,6 @@ namespace mc {
 			        detail::gen_result<typename seed::next, value::bool_<((seed{} % 2) == 1)>>;
 		};
 
-		template <typename... Ts>
-		struct any {
-			template <typename seed>
-			struct generate {
-				using random_value =
-				        typename mpl::call<mpl::at<mpl::uint_<(seed{} % sizeof...(Ts))>>,
-				                           Ts...>::template generate<typename seed::next>;
-
-				// skip one seed as it is used for the alternatives
-				using next_seed = typename random_value::next_seed::next;
-
-				// use a single seed for all the alternatives as they are all exclusive anyways
-				using type = value::any<typename random_value::type, next_seed>;
-			};
-		};
-
 		namespace detail {
 			template <typename Seed, typename Elem>
 			using gen_func = typename Elem::template generate<typename Seed::next_seed>;
@@ -134,6 +118,21 @@ namespace mc {
 			                mpl::transform<mpl::cfe<get_type>, mpl::cfe<ResultList>>,
 			                mpl::cfe<gen_result>>>;
 		} // namespace detail
+
+		template <typename... Ts>
+		struct any {
+			template <typename seed>
+			struct generate {
+				using type = typename mpl::call<mpl::at<mpl::uint_<(seed{} % sizeof...(Ts))>>,
+				                                Ts...>::template generate<typename seed::next>;
+
+				// skip one seed as it is used for the alternatives
+				using next_seed = typename type::next_seed::next;
+
+				// use a single seed for all the alternatives as they are all exclusive anyways
+				//				using type = value::any<typename random_value::type>;
+			};
+		};
 
 		template <typename... Ts>
 		struct list {
@@ -174,6 +173,13 @@ namespace mc {
 				// no move assignment
 				constexpr void operator=(inconstructible &&) = delete;
 			};
+
+			struct bitfield {
+				int foo : 1;
+			};
+			constexpr bitfield bfield_foo = {};
+
+			using bitfield_ref = decltype(bitfield::foo);
 		} // namespace detail
 
 		/// can literally be any type, everything is allowed
@@ -220,11 +226,10 @@ namespace mc {
 		};
 		// bool false falls back to default
 
-		template <typename T, typename Seed, typename... Ts>
-		struct shrink<value::any<T, Seed, Ts...>> {
+		template <typename T, typename... Ts>
+		struct shrink<value::any<T, Ts...>> {
 			using type =
-			        mpl::call<mpl::join<>, mpl::list<typename Ts::template generate<Seed>::type...>,
-			                  typename shrink<T>::type>;
+			        mpl::call<mpl::join<>, mpl::list<value::any<Ts>...>, typename shrink<T>::type>;
 		};
 
 		namespace detail {

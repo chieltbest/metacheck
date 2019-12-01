@@ -34,12 +34,7 @@ namespace mc {
 	struct func_name {
 		operator std::string() const {
 			std::string name{type_name<func_name<F>>{}};
-			std::size_t pos = name.rfind("::");
-			if (pos != name.npos) {
-				name.erase(0, pos + 2);
-			} else {
-				name.erase(0, 14); // remove "mc::func_name<"
-			}
+			name.erase(0, 14); // remove "mc::func_name<"
 			name.pop_back(); // remove trailing '>'
 			return name;
 		}
@@ -376,6 +371,10 @@ namespace mc {
 			                sizeof...(Ts))>::template f<F::template f, State, Ts...>::type>;
 		};
 	} // namespace mpl
+
+	namespace detail {
+		namespace kmpl = kvasir::mpl;
+	}
 
 	/// standard function properties that can be tested against
 	namespace prop {

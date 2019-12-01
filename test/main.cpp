@@ -5,9 +5,13 @@
 
 #include <iostream>
 
-#include "test/test.hpp"
+#include <metacheck/output/gtest_output.hpp>
+#include "test.hpp"
 
 int main() {
-	std::cout << mc::test_all(test_section, test_section_base);
+	mc::gtest::gtest_printer printer{};
+	mc::testing_main(
+	        &printer,
+	        test /*, test_section, test_section_precalc, mc::section("sub", test_section)*/);
 	return 0;
 }
