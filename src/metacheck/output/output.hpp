@@ -6,8 +6,6 @@
 
 #include <memory>
 
-#include "../result_types.hpp"
-
 namespace mc {
 	namespace output {
 

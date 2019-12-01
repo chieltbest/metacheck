@@ -4,8 +4,6 @@
 //          http://www.boost.org/LICENSE_1_0.txt)
 #pragma once
 
-#include <kvasir/mpl/mpl.hpp>
-
 namespace mc {
 	template <uint64_t cur_state>
 	struct seed_state {
