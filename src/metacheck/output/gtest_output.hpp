@@ -5,7 +5,9 @@
 #pragma once
 
 #include "output.hpp"
+#include "../random.hpp"
 
+#include <iostream>
 #include <sstream>
 #include <utility>
 

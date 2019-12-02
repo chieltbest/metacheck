@@ -4,81 +4,80 @@ os: linux
 
 matrix:
   include:
-  - compiler: gcc
-    addons:
-      apt:
-        sources:
-        - ubuntu-toolchain-r-test
-        packages:
-        - g++-5
-    env: TOOLSET=g++-5
-  - compiler: gcc
-    addons:
-      apt:
-        sources:
-        - ubuntu-toolchain-r-test
-        packages:
-        - g++-6
-    env: TOOLSET=g++-6
-  - compiler: gcc
-    addons:
-      apt:
-        sources:
-        - ubuntu-toolchain-r-test
-        packages:
-        - g++-7
-    env: TOOLSET=g++-7
+    - compiler: gcc
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-5
+      env: TOOLSET=g++-5
+    - compiler: gcc
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-6
+      env: TOOLSET=g++-6
+    - compiler: gcc
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-7
+      env: TOOLSET=g++-7
 
-  - compiler: clang
-    addons:
-      apt:
-        sources:
-        - ubuntu-toolchain-r-test
-        - llvm-toolchain-precise-3.8
-        packages:
-        - clang-3.8
-        - libstdc++-6-dev
-    env: TOOLSET=clang++-3.8
-  - compiler: clang
-    addons:
-      apt:
-        sources:
-        - ubuntu-toolchain-r-test
-        - llvm-toolchain-trusty-3.9
-        packages:
-        - clang-3.9
-        - libstdc++-6-dev
-    env: TOOLSET=clang++-3.9
-  - compiler: clang
-    addons:
-      apt:
-        sources:
-        - ubuntu-toolchain-r-test
-        - llvm-toolchain-trusty-4.0
-        packages:
-        - clang-4.0
-        - libstdc++-6-dev
-    env: TOOLSET=clang++-4.0
-  - compiler: clang
-    addons:
-      apt:
-        sources:
-        - ubuntu-toolchain-r-test
-        - llvm-toolchain-trusty-5.0
-        packages:
-        - clang-5.0
-        - libstdc++-6-dev
-    env: TOOLSET=clang++-5.0
+    - compiler: clang
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - llvm-toolchain-precise-3.8
+          packages:
+            - clang-3.8
+      env: TOOLSET=clang++-3.8
+    - compiler: clang
+      addons:
+        apt:
+          sources:
+            - llvm-toolchain-trusty-3.9
+          packages:
+            - clang-3.9
+      env: TOOLSET=clang++-3.9
+    - compiler: clang
+      addons:
+        apt:
+          sources:
+            - llvm-toolchain-trusty-4.0
+          packages:
+            - clang-4.0
+      env: TOOLSET=clang++-4.0
+    - compiler: clang
+      addons:
+        apt:
+          sources:
+            - llvm-toolchain-trusty-5.0
+          packages:
+            - clang-5.0
+      env: TOOLSET=clang++-5.0
 
-  - os: osx
-    compiler: clang
-    env: TOOLSET=clang++
+    - compiler: gcc
+      env: TOOLSET=g++
+
+    - compiler: clang
+      env: TOOLSET=clang++
+
+    - os: osx
+      compiler: clang
+      env: TOOLSET=clang++
 
 before_script:
-- mkdir build
-- cd build
-- cmake .. -DCMAKE_CXX_COMPILER=$TOOLSET
+  - mkdir build
+  - cd build
+  - cmake .. -DCMAKE_CXX_COMPILER=$TOOLSET
 
 script:
-- make VERBOSE=1
-- ./metacheck_test
+  - make VERBOSE=1
+  - ./metacheck_test
