@@ -128,9 +128,10 @@ namespace mc {
 			void output(output::printer_base *printer) const override {
 				auto test_section = printer->start_section(name, sizeof...(TestCases));
 				using minified    = first_minified<TestCases...>;
-				do_print_test(typename minified::test_case(), name, std::string{"minified compile"},
+				using minified_case = typename minified::test_case;
+				do_print_test(minified_case{}, name, std::string{"minified compile"},
 				              test_section.get());
-				attempt_runtime(typename minified::test_case(), std::string{"minified run"},
+				attempt_runtime(minified_case{}, std::string{"minified run"},
 				                test_section.get());
 				foreach
 					<void>(std::tuple<TestCases...>{}, print_test{name, test_section.get()});
