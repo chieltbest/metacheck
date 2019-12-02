@@ -54,14 +54,14 @@ matrix:
           packages:
             - clang-4.0
       env: TOOLSET=clang++-4.0
-    - compiler: clang
-      addons:
-        apt:
-          sources:
-            - llvm-toolchain-trusty-5.0
-          packages:
-            - clang-5.0
-      env: TOOLSET=clang++-5.0
+#    - compiler: clang
+#      addons:
+#        apt:
+#          sources:
+#            - llvm-toolchain-trusty-5.0
+#          packages:
+#            - clang-5.0
+#      env: TOOLSET=clang++-5.0
 
     - compiler: gcc
       env: TOOLSET=g++
@@ -69,9 +69,9 @@ matrix:
     - compiler: clang
       env: TOOLSET=clang++
 
-    - os: osx
-      compiler: clang
-      env: TOOLSET=clang++
+#    - os: osx
+#      compiler: clang
+#      env: TOOLSET=clang++
 
 before_script:
   - mkdir build
