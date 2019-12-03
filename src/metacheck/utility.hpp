@@ -124,13 +124,13 @@ namespace mc {
 		struct make_uint_sequence_impl;
 
 		template <typename C, typename... Ts>
-		using uint_sequence_for =
-		        kvasir::mpl::call<kvasir::mpl::make_int_sequence<kvasir::mpl::identity, C>,
-		                          kvasir::mpl::uint_<sizeof...(Ts)>>;
+		using uint_sequence_for = kvasir::mpl::call<kvasir::mpl::make_int_sequence<C>,
+		                                            kvasir::mpl::uint_<sizeof...(Ts)>>;
 
 		template <unsigned N, typename T, typename C>
-		using repeat = kvasir::mpl::call<kvasir::mpl::make_int_sequence<kvasir::mpl::always<T>, C>,
-		                                 kvasir::mpl::uint_<N>>;
+		using repeat = kvasir::mpl::call<
+		        kvasir::mpl::make_int_sequence<kvasir::mpl::transform<kvasir::mpl::always<T>, C>>,
+		        kvasir::mpl::uint_<N>>;
 
 		template <typename...>
 		constexpr bool always_false = false;

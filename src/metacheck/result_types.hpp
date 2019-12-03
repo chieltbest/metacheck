@@ -5,6 +5,9 @@
 #pragma once
 
 #include <sstream>
+#include <tuple>
+#include <utility>
+
 #include "minify.hpp"
 #include "output/output.hpp"
 #include "utility.hpp"
@@ -15,28 +18,27 @@ namespace mc {
 	public:
 		std::string name;
 
-		result(std::string name) : name{name} {
+		result(std::string name) : name{std::move(name)} {
 		}
 
-		virtual ~result() {
-		}
+		virtual ~result() = default;
 
 		virtual void output(output::printer_base *printer) const = 0;
 	};
 
 	namespace detail {
+		struct section_print_test {
+			output::printer_base *printer;
+
+			template <typename T>
+			void operator()(T test) {
+				deref(test).output(printer);
+			}
+		};
 
 		template <typename... Tests>
 		class section_result : public result {
 		protected:
-			struct print_test {
-				output::printer_base *printer;
-				template <typename T>
-				void operator()(T test) {
-					deref(test).output(printer);
-				}
-			};
-
 		public:
 			std::tuple<Tests...> tests;
 
@@ -49,7 +51,7 @@ namespace mc {
 
 			void output(output::printer_base *printer) const override {
 				std::shared_ptr<output::printer_base> new_section = printer->start_section(name, 0);
-				print_test func{new_section.get()};
+				section_print_test func{new_section.get()};
 				mc::foreach<void>(tests, func);
 				new_section->end_section();
 			}
@@ -58,20 +60,21 @@ namespace mc {
 		template <typename... Tests>
 		class main_section : public section_result<Tests...> {
 		public:
-			main_section(Tests... tests) : section_result<Tests...>{"", tests...} {
+			main_section(const section_result<Tests...> sec)
+			    : section_result<Tests...>{sec.name, sec.tests} {
 			}
 
 			void output(output::printer_base *printer) const override {
 				printer->begin_testing(0, 0); // TODO
-				typename section_result<Tests...>::print_test func{printer};
+				section_print_test func{printer};
 				mc::foreach<void>(this->tests, func);
 				printer->end_testing();
 			}
 		};
 
 		template <typename... Tests>
-		constexpr main_section<Tests...> make_main_section(const Tests... tests) {
-			return {tests...};
+		constexpr main_section<Tests...> make_main_section(const section_result<Tests...> sec) {
+			return {sec};
 		}
 
 		// TODO: template parameters
@@ -100,11 +103,11 @@ namespace mc {
 				                .replace(0, 17, funcname); // replace kvasir::mpl::list
 				outstr << "compile " << func_call << std::endl
 				       << std::endl
-				       << std::string(type_name<typename T::type>{});
+				       << std::string(type_name<T>{});
 				printer->print_compiletime_test(name, T::value, outstr.str());
 			}
 
-			struct print_test {
+			struct test_print_test {
 				std::string name;
 				output::printer_base *printer;
 				unsigned testnum = 1;
@@ -126,15 +129,14 @@ namespace mc {
 			}
 
 			void output(output::printer_base *printer) const override {
-				auto test_section = printer->start_section(name, sizeof...(TestCases));
-				using minified    = first_minified<TestCases...>;
-				using minified_case = typename minified::test_case;
+				auto test_section   = printer->start_section(name, sizeof...(TestCases));
+				using minified      = first_minified<TestCases...>;
+				using minified_case = typename minified::testcase;
 				do_print_test(minified_case{}, name, std::string{"minified compile"},
 				              test_section.get());
-				attempt_runtime(minified_case{}, std::string{"minified run"},
-				                test_section.get());
+				attempt_runtime(minified_case{}, std::string{"minified run"}, test_section.get());
 				foreach
-					<void>(std::tuple<TestCases...>{}, print_test{name, test_section.get()});
+					<void>(std::tuple<TestCases...>{}, test_print_test{name, test_section.get()});
 				test_section->end_section();
 			}
 		};

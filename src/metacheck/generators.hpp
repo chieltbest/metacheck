@@ -123,31 +123,37 @@ namespace mc {
 		struct any {
 			template <typename seed>
 			struct generate {
-				using type = typename mpl::call<mpl::at<mpl::uint_<(seed{} % sizeof...(Ts))>>,
-				                                Ts...>::template generate<typename seed::next>;
+				using random_value =
+				        typename mpl::call<mpl::at<mpl::uint_<(seed{} % sizeof...(Ts))>>,
+				                           Ts...>::template generate<typename seed::next>;
 
 				// skip one seed as it is used for the alternatives
-				using next_seed = typename type::next_seed::next;
+				using next_seed = typename random_value::next_seed::next;
 
 				// use a single seed for all the alternatives as they are all exclusive anyways
-				//				using type = value::any<typename random_value::type>;
+				using type = value::any<typename random_value::type>;
 			};
 		};
 
-		template <typename... Ts>
-		struct list {
+		template <template <typename...> class Func, typename... Ts>
+		struct call {
 			template <typename seed>
-			using generate = mpl::call<typename detail::generate_all<seed, value::list>, Ts...>;
+			using generate = mpl::call<typename detail::generate_all<seed, Func>, Ts...>;
 		};
 
-		template <typename Gen, typename N = uint_<256>>
-		struct list_of {
+		template <typename... Ts>
+		using list = call<value::list, Ts...>;
+
+		template <template <typename...> class Func, typename Gen, typename N = uint_<256>>
+		struct call_variadic {
 			template <typename seed>
 			using generate = mc::mpl::repeat<
 			        N::template generate<seed>::type::type::value, Gen,
-			        detail::generate_all<typename N::template generate<seed>::next_seed,
-			                             value::list_of>>;
+			        detail::generate_all<typename N::template generate<seed>::next_seed, Func>>;
 		};
+
+		template <typename Gen, typename N = uint_<256>>
+		using list_of = call_variadic<value::list_of, Gen, N>;
 
 		namespace detail {
 			template <typename...>

@@ -36,7 +36,7 @@ namespace mc {
 
 	template <typename... Tests>
 	void testing_main(output::printer_base *printer, const Tests... tests) {
-		return detail::make_main_section(evaluate(tests)...).output(printer);
+		return detail::make_main_section(mc::evaluate(mc::section("", tests...))).output(printer);
 	}
 
 } // namespace mc
