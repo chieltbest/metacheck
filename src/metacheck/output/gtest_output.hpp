@@ -11,19 +11,23 @@
 #include <sstream>
 #include <utility>
 
+#include <chrono>
+
 namespace mc {
 	namespace gtest {
 
 		class gtest_printer : public output::printer_base {
 			std::string section_name;
 			unsigned num_sections, num_tests, passed = 0;
+			unsigned section_depth = 0;
 
 		public:
 			explicit gtest_printer(std::string sectionName = "", unsigned num_sections = 0,
-			                       unsigned num_tests = 0)
+			                       unsigned num_tests = 0, unsigned section_depth = 0)
 			    : section_name{std::move(sectionName)},
 			      num_sections{num_sections},
-			      num_tests{num_tests} {
+			      num_tests{num_tests},
+			      section_depth{section_depth} {
 			}
 
 			~gtest_printer() override = default;
@@ -51,18 +55,30 @@ namespace mc {
 			start_section(std::string subsection_name, unsigned subsection_tests) override {
 				std::stringstream sstr{};
 				sstr << section_name;
-				if (!section_name.empty()) {
+				switch (section_depth) {
+				case 0:
+					// nothing
+					break;
+				case 1:
 					sstr << ".";
+					break;
+				default:
+					sstr << "::";
 				}
 				sstr << subsection_name;
-				std::cout << "[----------] " << subsection_tests << " tests from " << sstr.str()
-				          << std::endl;
-				return std::make_unique<gtest_printer>(sstr.str(), 0, subsection_tests);
+				if (section_depth == 0) {
+					std::cout << "[----------] " << subsection_tests << " tests from " << sstr.str()
+					          << std::endl;
+				}
+				return std::make_unique<gtest_printer>(sstr.str(), 0, subsection_tests,
+				                                       section_depth + 1);
 			}
 
 			void end_section() override {
-				std::cout << "[----------] " << num_tests << " tests from " << section_name
-				          << " (0 ms total)" << std::endl;
+				if (section_depth == 1) {
+					std::cout << "[----------] " << num_tests << " tests from " << section_name
+					          << " (0 ms total)" << std::endl;
+				}
 			}
 
 			void print_compiletime_test(std::string test_name, bool success,

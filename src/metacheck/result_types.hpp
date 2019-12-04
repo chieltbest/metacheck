@@ -44,7 +44,8 @@ namespace mc {
 		public:
 			std::tuple<Tests...> tests;
 
-			section_result(std::string name, Tests... tests) : result{name}, tests{tests...} {
+			explicit section_result(std::string name, Tests... tests)
+			    : result{name}, tests{tests...} {
 			}
 
 			section_result(std::string name, const std::tuple<Tests...> &tests)
