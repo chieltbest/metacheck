@@ -21,8 +21,7 @@ set(METACHECK_TEST_SOURCES test/metacheck_test_main.cpp #[[test/generators.cpp]]
 
 add_executable(metacheck_test ${METACHECK_TEST_SOURCES})
 target_link_libraries(metacheck_test PUBLIC metacheck_interface PRIVATE kvasir_mpl)
-target_compile_options(metacheck_test PRIVATE -Wall -Werror -ftemplate-backtrace-limit=0
-		-fsanitize=address -fsanitize=undefined)
+target_compile_options(metacheck_test PRIVATE -Wall -Werror -ftemplate-backtrace-limit=0)
 
 option(METACHECK_TEST_RANDOM 0)
 if (METACHECK_TEST_RANDOM)
@@ -33,8 +32,7 @@ endif ()
 # target that includes metacheck and self-tests the library after inclusion
 add_executable(metacheck_full ${METACHECK_TEST_SOURCES})
 target_link_libraries(metacheck_full PUBLIC metacheck_interface PRIVATE kvasir_mpl)
-target_compile_options(metacheck_full PRIVATE -Wall -Werror -ftemplate-backtrace-limit=0
-		-fsanitize=address -fsanitize=undefined)
+target_compile_options(metacheck_full PRIVATE -Wall -Werror -ftemplate-backtrace-limit=0)
 add_custom_command(TARGET metacheck_full POST_BUILD
 		COMMAND metacheck_full
 		COMMENT "Testing metacheck internals")

@@ -22,9 +22,12 @@ namespace mc {
 	template <typename T>
 	struct type_name {
 		operator std::string() const {
+			const char *mangled_name = typeid(T).name();
+			// TODO status
 			const char *name{
-			        __cxxabiv1::__cxa_demangle(typeid(T).name(), nullptr, nullptr, nullptr)};
-			std::string res{name}; // copy from name into string
+			        __cxxabiv1::__cxa_demangle(mangled_name, nullptr, nullptr, nullptr)};
+			// check if the demangling was a succes and copy it into a std::string
+			std::string res{name ? name : (mangled_name ? mangled_name : "")};
 			delete name;
 			return res;
 		}

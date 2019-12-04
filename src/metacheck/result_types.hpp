@@ -79,60 +79,60 @@ namespace mc {
 			return {sec};
 		}
 
+		template <typename T>
+		static auto attempt_runtime(T test, std::string name, output::printer_base *printer)
+		        -> decltype(bool{typename T::type{}()}, kmpl::nothing{}) {
+			printer->start_runtime_test(name, T::value);
+			bool success = false;
+			try {
+				success = typename T::type{}();
+			} catch (const std::runtime_error e) {
+				std::cout << e.what() << std::endl;
+			} catch (const std::exception e) {
+				std::cout << e.what() << std::endl;
+			} catch (...) {
+				std::cout << "An unknown exception was thrown" << std::endl;
+			}
+			printer->end_runtime_test(name, success);
+			return {};
+		}
+
+		template <typename... Ts>
+		static void attempt_runtime(Ts...) {
+		}
+
+		template <typename T>
+		static void do_print_test(T test, std::string funcname, std::string name,
+		                          output::printer_base *printer) {
+			std::stringstream outstr{};
+			std::string func_call = std::string(type_name<typename T::params::type>{})
+			                                .replace(0, 17, funcname); // replace kvasir::mpl::list
+			outstr << "compile " << func_call << std::endl
+			       << std::endl
+			       << std::string(type_name<T>{});
+			printer->print_compiletime_test(name, T::value, outstr.str());
+		}
+
+		struct test_print_test {
+			std::string name;
+			output::printer_base *printer;
+			unsigned testnum = 1;
+
+			template <typename T>
+			void operator()(T test) {
+				std::stringstream namestr{};
+				namestr << "compile " << testnum;
+				do_print_test(test, name, namestr.str(), printer);
+				namestr.str("");
+				namestr << "run " << testnum;
+				attempt_runtime(test, namestr.str(), printer);
+				++testnum;
+			}
+		};
+
 		// TODO: template parameters
 		template <typename... TestCases>
 		class test_result : public result {
-
-			template <typename T>
-			static auto attempt_runtime(T test, std::string name, output::printer_base *printer)
-			        -> decltype(bool{typename T::type{}()}, kmpl::nothing{}) {
-				printer->start_runtime_test(name, T::value);
-				bool success = false;
-				try {
-					success = typename T::type{}();
-				} catch (const std::exception &e) {
-					std::cout << e.what() << std::endl;
-				} catch (...) {
-					std::cout << "An unknown exception was thrown" << std::endl;
-				}
-				printer->end_runtime_test(name, success);
-				return {};
-			}
-
-			template <typename... Ts>
-			static void attempt_runtime(Ts...) {
-			}
-
-			template <typename T>
-			static void do_print_test(T test, std::string funcname, std::string name,
-			                          output::printer_base *printer) {
-				std::stringstream outstr{};
-				std::string func_call =
-				        std::string(type_name<typename T::params::type>{})
-				                .replace(0, 17, funcname); // replace kvasir::mpl::list
-				outstr << "compile " << func_call << std::endl
-				       << std::endl
-				       << std::string(type_name<T>{});
-				printer->print_compiletime_test(name, T::value, outstr.str());
-			}
-
-			struct test_print_test {
-				std::string name;
-				output::printer_base *printer;
-				unsigned testnum = 1;
-
-				template <typename T>
-				void operator()(T test) {
-					std::stringstream namestr{};
-					namestr << "compile " << testnum;
-					do_print_test(test, name, namestr.str(), printer);
-					namestr.str("");
-					namestr << "run " << testnum;
-					attempt_runtime(test, namestr.str(), printer);
-					++testnum;
-				}
-			};
-
 		public:
 			test_result(std::string name) : result(name) {
 			}
