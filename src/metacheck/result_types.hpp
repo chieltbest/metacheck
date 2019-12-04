@@ -4,7 +4,9 @@
 //          http://www.boost.org/LICENSE_1_0.txt)
 #pragma once
 
+#include <iostream>
 #include <sstream>
+#include <stdexcept>
 #include <tuple>
 #include <utility>
 
@@ -85,7 +87,14 @@ namespace mc {
 			static auto attempt_runtime(T test, std::string name, output::printer_base *printer)
 			        -> decltype(bool{typename T::type{}()}, kmpl::nothing{}) {
 				printer->start_runtime_test(name, T::value);
-				bool success = typename T::type{}();
+				bool success = false;
+				try {
+					success = typename T::type{}();
+				} catch (const std::exception &e) {
+					std::cout << e.what() << std::endl;
+				} catch (...) {
+					std::cout << "An unknown exception was thrown" << std::endl;
+				}
 				printer->end_runtime_test(name, success);
 				return {};
 			}
@@ -139,7 +148,7 @@ namespace mc {
 					<void>(std::tuple<TestCases...>{}, test_print_test{name, test_section.get()});
 				test_section->end_section();
 			}
-		};
+		}; // namespace detail
 
 	} // namespace detail
 } // namespace mc
