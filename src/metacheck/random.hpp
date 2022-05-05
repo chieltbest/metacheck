@@ -4,6 +4,8 @@
 //          http://www.boost.org/LICENSE_1_0.txt)
 #pragma once
 
+#include <cstdint>
+
 namespace mc {
 	template <uint64_t cur_state>
 	struct seed_state {
@@ -26,11 +28,10 @@ namespace mc {
 	using random_seed = seed_state<uint64_t(METACHECK_RANDOM)>;
 #else
 	// initialize the seed with the hashed time for randomness sake
-	using random_seed =
-	        seed_state<seed_state<(((((__TIME__[1] - '0') + (__TIME__[0] - '0') * 10) * 60) +
-	                                ((__TIME__[4] - '0') + (__TIME__[3] - '0') * 10)) *
-	                               60) +
-	                              ((__TIME__[7] - '0') + (__TIME__[6] - '0') * 10)>{}>;
+	using random_seed = seed_state<seed_state<(((((__TIME__[1] - '0') + (__TIME__[0] - '0') * 10) * 60) +
+	                                            ((__TIME__[4] - '0') + (__TIME__[3] - '0') * 10)) *
+	                                           60) +
+	                                          ((__TIME__[7] - '0') + (__TIME__[6] - '0') * 10)>{}>;
 #endif
 
 	namespace detail {
@@ -41,17 +42,15 @@ namespace mc {
 		        = typename seed_state<Seed{} ^ i>::next;
 
 		constexpr uint64_t encode_string(uint64_t seed, const char *s, unsigned pos) {
-			return s[pos] == '\0' ? seed
-			                        // barrel shift left by 8 then xor with current char
-			                        :
-			                        encode_string((((seed & ~(1ull << 56)) << 8) |
-			                                       ((seed & (0xffull << 56)) >> 56)) ^
-			                                              s[pos],
-			                                      s, pos + 1);
+			return s[pos] == '\0' ?
+			               seed
+			               // barrel shift left by 8 then xor with current char
+			               :
+			               encode_string((((seed & ~(1ull << 56)) << 8) | ((seed & (0xffull << 56)) >> 56)) ^ s[pos], s,
+			                             pos + 1);
 		}
 	} // namespace detail
 
-#define FILE_RANDOM         \
-	mc::detail::encode_int< \
-	        mc::seed_state<mc::detail::encode_string(mc::random_seed{}, __FILE__, 0)>, __LINE__>
+#define FILE_RANDOM                                                                                                    \
+	mc::detail::encode_int<mc::seed_state<mc::detail::encode_string(mc::random_seed{}, __FILE__, 0)>, __LINE__>
 } // namespace mc

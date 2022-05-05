@@ -18,19 +18,14 @@ namespace mc {
 
 	class result {
 	public:
-		std::string name;
-
-		result(std::string name) : name{std::move(name)} {
-		}
-
 		virtual ~result() = default;
 
-		virtual void output(output::printer_base *printer) const = 0;
+		virtual void output(output::section_printer_base *printer) const = 0;
 	};
 
 	namespace detail {
 		struct section_print_test {
-			output::printer_base *printer;
+			output::section_printer_base *printer;
 
 			template <typename T>
 			void operator()(T test) {
@@ -40,20 +35,19 @@ namespace mc {
 
 		template <typename... Tests>
 		class section_result : public result {
-		protected:
 		public:
+			std::string name;
+
 			std::tuple<Tests...> tests;
 
-			explicit section_result(std::string name, Tests... tests)
-			    : result{name}, tests{tests...} {
+			explicit section_result(std::string name, Tests... tests) : name{std::move(name)}, tests{tests...} {
 			}
 
-			section_result(std::string name, const std::tuple<Tests...> &tests)
-			    : result(name), tests(tests) {
+			section_result(std::string name, const std::tuple<Tests...> &tests) : name{std::move(name)}, tests{tests} {
 			}
 
-			void output(output::printer_base *printer) const override {
-				std::shared_ptr<output::printer_base> new_section = printer->start_section(name, 0);
+			void output(output::section_printer_base *printer) const override {
+				auto new_section = printer->start_section(name, 0);
 				section_print_test func{new_section.get()};
 				mc::foreach<void>(tests, func);
 				new_section->end_section();
@@ -61,35 +55,53 @@ namespace mc {
 		};
 
 		template <typename... Tests>
-		class main_section : public section_result<Tests...> {
+		class transparent_section_result : public result {
 		public:
-			main_section(const section_result<Tests...> sec)
-			    : section_result<Tests...>{sec.name, sec.tests} {
+			std::tuple<Tests...> tests;
+
+			explicit transparent_section_result(Tests... tests) : tests{tests...} {
 			}
 
-			void output(output::printer_base *printer) const override {
-				printer->begin_testing(0, 0); // TODO
+			explicit transparent_section_result(std::tuple<Tests...> tests) : tests{tests} {
+			}
+
+			void output(output::section_printer_base *printer) const override {
 				section_print_test func{printer};
-				mc::foreach<void>(this->tests, func);
+				mc::foreach<void>(tests, func);
+			}
+		};
+
+		template <typename... Tests>
+		class main_section {
+		public:
+			std::tuple<Tests...> tests;
+
+			explicit main_section(const transparent_section_result<Tests...> sec) : tests{sec.tests} {
+			}
+
+			void output(output::printer_base *printer) const {
+				printer->begin_testing(0, 0); // TODO count the total number of tests
+				section_print_test func{printer};
+				mc::foreach<void>(tests, func);
 				printer->end_testing();
 			}
 		};
 
 		template <typename... Tests>
-		constexpr main_section<Tests...> make_main_section(const section_result<Tests...> sec) {
-			return {sec};
+		constexpr main_section<Tests...> make_main_section(const transparent_section_result<Tests...> sec) {
+			return main_section{sec};
 		}
 
 		template <typename T>
-		static auto attempt_runtime(T test, std::string name, output::printer_base *printer)
-		        -> decltype(bool{typename T::type{}()}, kmpl::nothing{}) {
-			printer->start_runtime_test(name, T::value);
+		static auto attempt_runtime(T test, const std::string &name, output::test_printer_base *printer,
+		                            bool minified = false) -> decltype(bool{typename T::type{}()}, kmpl::nothing{}) {
+			printer->start_runtime_test(name, T::value, minified);
 			bool success = false;
 			try {
 				success = typename T::type{}();
-			} catch (const std::runtime_error e) {
+			} catch (const std::runtime_error &e) {
 				std::cout << e.what() << std::endl;
-			} catch (const std::exception e) {
+			} catch (const std::exception &e) {
 				std::cout << e.what() << std::endl;
 			} catch (...) {
 				std::cout << "An unknown exception was thrown" << std::endl;
@@ -103,20 +115,24 @@ namespace mc {
 		}
 
 		template <typename T>
-		static void do_print_test(T test, std::string funcname, std::string name,
-		                          output::printer_base *printer) {
+		static void do_print_test(T test, const std::string &funcname, const std::string &name,
+		                          output::test_printer_base *printer, bool minified = false) {
 			std::stringstream outstr{};
 			std::string func_call = std::string(type_name<typename T::params::type>{})
 			                                .replace(0, 17, funcname); // replace kvasir::mpl::list
-			outstr << "compile " << func_call << std::endl
-			       << std::endl
-			       << std::string(type_name<T>{});
-			printer->print_compiletime_test(name, T::value, outstr.str());
+			outstr << "compile " << func_call << std::endl;
+			outstr << "(unwrapped) " << std::string(type_name<typename T::params>{}).erase(0, 21);
+			if (!T::value) {
+				outstr << std::endl << "failed with " << std::string(type_name<T>{});
+			}
+
+			printer->print_compiletime_test(name, T::value, outstr.str(), minified);
 		}
 
 		struct test_print_test {
 			std::string name;
-			output::printer_base *printer;
+			output::test_printer_base *printer;
+
 			unsigned testnum = 1;
 
 			template <typename T>
@@ -135,21 +151,25 @@ namespace mc {
 		template <typename... TestCases>
 		class test_result : public result {
 		public:
-			test_result(std::string name) : result(name) {
+			std::string name;
+
+			test_result(std::string name) : name{std::move(name)} {
 			}
 
-			void output(output::printer_base *printer) const override {
-				auto test_section   = printer->start_section(name, sizeof...(TestCases));
+			void output(output::section_printer_base *printer) const override {
+				auto test_section   = printer->start_test(name, sizeof...(TestCases) + 1, sizeof...(TestCases) + 1);
 				using minified      = first_minified<TestCases...>;
 				using minified_case = typename minified::testcase;
-				do_print_test(minified_case{}, name, std::string{"minified compile"},
-				              test_section.get());
+
+				do_print_test(minified_case{}, name, std::string{"minified compile"}, test_section.get());
 				attempt_runtime(minified_case{}, std::string{"minified run"}, test_section.get());
+
 				foreach
 					<void>(std::tuple<TestCases...>{}, test_print_test{name, test_section.get()});
-				test_section->end_section();
+
+				test_section->end_test();
 			}
-		}; // namespace detail
+		};
 
 	} // namespace detail
 } // namespace mc

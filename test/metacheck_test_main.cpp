@@ -19,8 +19,10 @@ extern const mc::result *utility_section;
 
 int main() {
 	mc::gtest::gtest_printer printer{};
-	mc::testing_main(&printer/*, generators_section*//*, interface_section, metacheck_section,
-	                 minify_section, random_section, result_types_section, test_all_section,
-	                 test_case_section*/, utility_section);
+	mc::testing_main(&printer, generators_section /*, interface_section, metacheck_section,
+	                  minify_section, random_section, result_types_section, test_all_section,
+	                  test_case_section*/
+	                 ,
+	                 utility_section);
 	return 0;
 }

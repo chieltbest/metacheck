@@ -8,6 +8,11 @@ namespace mc {
 	namespace detail {
 
 		template <typename... Tests>
+		struct transparent_section {
+			std::tuple<Tests...> tests;
+		};
+
+		template <typename... Tests>
 		struct section {
 			const char *name;
 			std::tuple<Tests...> tests;
